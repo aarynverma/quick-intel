@@ -1,0 +1,32 @@
+{
+  "name": "quick-intel",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Quick Intel — AI-powered page summarizer. Get the gist of any article in seconds.",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build:icons && vite build --watch --mode development",
+    "build": "npm run build:icons && tsc -b --noEmit && vite build",
+    "build:icons": "node scripts/generate-icons.mjs",
+    "preview": "vite preview",
+    "clean": "rm -rf dist",
+    "package": "npm run build && cd dist && zip -r ../quick-intel.zip . && cd .."
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.25",
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/chrome": "^0.0.268",
+    "@types/node": "^25.6.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "sharp": "^0.33.4",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.4"
+  }
+}

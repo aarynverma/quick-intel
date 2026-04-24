@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Quick Intel",
+  "version": "1.0.0",
+  "description": "AI-powered page summarizer. Get the gist of any article in seconds with TL;DR, bullet, or detailed summaries.",
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "Quick Intel — Summarize this page",
+    "default_icon": {
+      "16": "public/icons/icon16.png",
+      "32": "public/icons/icon32.png",
+      "48": "public/icons/icon48.png",
+      "128": "public/icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "public/icons/icon16.png",
+    "32": "public/icons/icon32.png",
+    "48": "public/icons/icon48.png",
+    "128": "public/icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src https://api.openai.com https://api.anthropic.com"
+  },
+  "minimum_chrome_version": "114"
+}

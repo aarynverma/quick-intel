@@ -1,0 +1,13 @@
+node_modules
+dist
+dist.zip
+quick-intel.zip
+.DS_Store
+*.log
+.env
+.env.local
+.vite
+public/icons/icon16.png
+public/icons/icon32.png
+public/icons/icon48.png
+public/icons/icon128.png

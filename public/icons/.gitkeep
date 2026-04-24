@@ -1,0 +1,2 @@
+Icons are generated at build time by scripts/generate-icons.mjs.
+Run `npm run build:icons` or `npm run build` to populate this folder.

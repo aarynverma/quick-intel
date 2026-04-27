@@ -26,4 +26,4 @@ When you click "Summarize," the current page's text is sent to the LLM provider 
 - host_permissions for api.openai.com / api.anthropic.com / generativelanguage.googleapis.com: Send page text to your chosen LLM
 
 ## Contact
-[dev.aryanverma.co]
+[dev@aryanverma.co]

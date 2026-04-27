@@ -29,13 +29,13 @@ export default function HistoryList({ items, onSelect, onDelete, onClearAll }: P
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
-          <svg className="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+          <svg className="h-5 w-5 text-slate-400 dark:text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
           </svg>
         </div>
-        <p className="text-sm font-medium text-slate-900">No summaries yet</p>
-        <p className="mt-1 text-xs text-slate-500">Your past summaries will appear here.</p>
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">No summaries yet</p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Your past summaries will appear here.</p>
       </div>
     );
   }
@@ -43,12 +43,12 @@ export default function HistoryList({ items, onSelect, onDelete, onClearAll }: P
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between pb-1">
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-slate-500 dark:text-slate-400">
           {items.length} {items.length === 1 ? 'summary' : 'summaries'}
         </span>
         <button
           onClick={onClearAll}
-          className="text-xs font-medium text-rose-600 hover:text-rose-700"
+          className="text-xs font-medium text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
         >
           Clear all
         </button>
@@ -58,10 +58,10 @@ export default function HistoryList({ items, onSelect, onDelete, onClearAll }: P
         <button
           key={item.id}
           onClick={() => onSelect(item)}
-          className="group block w-full rounded-lg border border-slate-200 bg-white p-3 text-left transition hover:border-brand-300 hover:shadow-sm"
+          className="group block w-full rounded-lg border border-slate-200 bg-white p-3 text-left transition hover:border-brand-300 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:hover:border-brand-500"
         >
           <div className="mb-1 flex items-start justify-between gap-2">
-            <h3 className="line-clamp-1 flex-1 text-sm font-medium text-slate-900">
+            <h3 className="line-clamp-1 flex-1 text-sm font-medium text-slate-900 dark:text-slate-100">
               {item.title}
             </h3>
             <span
@@ -71,7 +71,7 @@ export default function HistoryList({ items, onSelect, onDelete, onClearAll }: P
               }}
               role="button"
               tabIndex={0}
-              className="shrink-0 rounded p-1 text-slate-400 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600"
+              className="shrink-0 rounded p-1 text-slate-400 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950 dark:hover:text-rose-400"
               aria-label="Delete"
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -79,12 +79,12 @@ export default function HistoryList({ items, onSelect, onDelete, onClearAll }: P
               </svg>
             </span>
           </div>
-          <p className="mb-1.5 line-clamp-1 text-[11px] text-slate-500">{item.url}</p>
+          <p className="mb-1.5 line-clamp-1 text-[11px] text-slate-500 dark:text-slate-400">{item.url}</p>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700">
+            <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-300">
               {STYLE_LABELS[item.style]}
             </span>
-            <span className="text-[11px] text-slate-400">{formatRelative(item.createdAt)}</span>
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">{formatRelative(item.createdAt)}</span>
           </div>
         </button>
       ))}

@@ -13,15 +13,15 @@ export default function TabBar({ active, onChange, historyCount, needsSetup }: P
   ];
 
   return (
-    <nav className="flex border-b border-slate-100">
+    <nav className="flex border-b border-slate-100 dark:border-slate-700">
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
           className={`relative flex-1 border-b-2 px-3 py-2.5 text-xs font-medium transition ${
             active === t.id
-              ? 'border-brand-600 text-brand-700'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-brand-600 text-brand-700 dark:text-brand-400'
+              : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
           }`}
         >
           {t.label}

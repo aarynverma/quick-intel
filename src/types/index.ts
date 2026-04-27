@@ -2,7 +2,9 @@
 
 export type SummaryStyle = 'tldr' | 'bullets' | 'detailed';
 
-export type Provider = 'openai' | 'anthropic';
+export type Provider = 'openai' | 'anthropic' | 'gemini';
+
+export type Theme = 'system' | 'light' | 'dark';
 
 export interface SummaryRecord {
   id: string;
@@ -20,22 +22,24 @@ export interface ExtractedContent {
 }
 
 export interface Settings {
-  apiKey: string;
+  apiKeys: Record<Provider, string>;
   model: string;
   provider: Provider;
+  theme: Theme;
 }
 
-// Public settings view returned to the popup — NEVER contains the raw API key.
-// The popup only needs to know whether a key is configured.
+// Public settings view returned to the popup — NEVER contains raw API keys.
 export interface PublicSettings {
-  hasApiKey: boolean;
+  hasApiKey: Record<Provider, boolean>;
+  apiKeyPreviews: Record<Provider, string>; // last 4 chars, or '' if no key
   model: string;
   provider: Provider;
+  theme: Theme;
 }
 
 // Discriminated union for all popup <-> background messages.
 export type RuntimeMessage =
-  | { type: 'SUMMARIZE_ACTIVE_TAB'; style: SummaryStyle }
+  | { type: 'SUMMARIZE_ACTIVE_TAB'; style: SummaryStyle; customInstructions?: string; providerOverride?: Provider }
   | { type: 'GET_HISTORY' }
   | { type: 'CLEAR_HISTORY' }
   | { type: 'DELETE_HISTORY_ITEM'; id: string }

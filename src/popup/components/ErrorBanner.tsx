@@ -17,13 +17,13 @@ const FRIENDLY: Record<string, { title: string; hint?: string }> = {
 export default function ErrorBanner({ error, onDismiss }: Props) {
   const f = FRIENDLY[error.code] ?? FRIENDLY.UNKNOWN;
   return (
-    <div className="relative rounded-lg border border-rose-200 bg-rose-50 p-3 pr-8 text-sm">
-      <div className="font-semibold text-rose-900">{f.title}</div>
-      <div className="mt-0.5 text-xs text-rose-700">{error.message}</div>
-      {f.hint && <div className="mt-1 text-[11px] text-rose-600">{f.hint}</div>}
+    <div className="relative rounded-lg border border-rose-200 bg-rose-50 p-3 pr-8 text-sm dark:border-rose-800 dark:bg-rose-950">
+      <div className="font-semibold text-rose-900 dark:text-rose-200">{f.title}</div>
+      <div className="mt-0.5 text-xs text-rose-700 dark:text-rose-300">{error.message}</div>
+      {f.hint && <div className="mt-1 text-[11px] text-rose-600 dark:text-rose-400">{f.hint}</div>}
       <button
         onClick={onDismiss}
-        className="absolute right-2 top-2 rounded p-1 text-rose-500 hover:bg-rose-100"
+        className="absolute right-2 top-2 rounded p-1 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900"
         aria-label="Dismiss"
       >
         <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

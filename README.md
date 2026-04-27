@@ -16,8 +16,9 @@
 - **Three summary styles** — TL;DR, bullet points, or a detailed multi-paragraph breakdown
 - **Local history** — up to 50 past summaries stored via `chrome.storage.local`
 - **One-click copy** — with "Copied!" feedback
-- **Privacy-first** — your API key never leaves your browser; calls go directly to OpenAI or Anthropic
-- **Minimum-privilege manifest** — `activeTab` only, plus scoped host permissions for the two API endpoints
+- **Privacy-first** — your API key never leaves your browser; calls go directly to OpenAI, Anthropic, or Google
+- **Free tier available** — Google Gemini's free tier (15 req/min, no credit card) is a zero-cost starting point
+- **Minimum-privilege manifest** — `activeTab` only, plus scoped host permissions for the three API endpoints
 
 ## Screenshots
 
@@ -25,7 +26,7 @@
 
 1. **Main view** — header with the Quick Intel bolt mark, summary-style dropdown, primary "Summarize this page" button, and a clean card with the generated summary.
 2. **History tab** — list of past summaries, each showing title, source URL, style badge, and relative timestamp. Hover reveals a delete button.
-3. **Settings** — provider toggle (OpenAI / Anthropic), model input, and a password-style API key field with "Show" / "Hide" toggle and a "Key saved" indicator.
+3. **Settings** — provider toggle (OpenAI / Anthropic / Gemini), model input, and a password-style API key field with "Show" / "Hide" toggle and a "Key saved" indicator.
 4. **Error state** — rose-colored banner with a clear title, specific message, and a hint on how to recover.
 
 ## Setup
@@ -66,10 +67,11 @@ npm run dev
 
 1. Click the Quick Intel icon
 2. Go to the **Settings** tab
-3. Pick a provider (OpenAI or Anthropic)
+3. Pick a provider (OpenAI, Anthropic, or Gemini)
 4. Paste your API key → **Save settings**
 
 **Where to get a key:**
+- **Google Gemini (free)** → https://aistudio.google.com/apikey — free tier, 15 req/min, no credit card required
 - OpenAI → https://platform.openai.com/api-keys
 - Anthropic → https://console.anthropic.com/settings/keys
 
@@ -93,8 +95,8 @@ VITE_DEFAULT_MODEL=gpt-4o-mini
 ### Security model
 - The **popup never sees the API key**. It only queries `GET_PUBLIC_SETTINGS`, which returns a redacted `{ hasApiKey: boolean, model, provider }`.
 - All LLM calls happen in the **service worker**. The key is read from `chrome.storage.local`, used in a `fetch`, and never returned to the popup.
-- The manifest's `host_permissions` is scoped to the two API endpoints only. Page content is accessed via `activeTab` + `chrome.scripting.executeScript` — no broad `<all_urls>` grant.
-- A strict **Content Security Policy** restricts `connect-src` to the two API hosts.
+- The manifest's `host_permissions` is scoped to the three API endpoints only. Page content is accessed via `activeTab` + `chrome.scripting.executeScript` — no broad `<all_urls>` grant.
+- A strict **Content Security Policy** restricts `connect-src` to the three API hosts.
 
 ### Service worker lifecycle (MV3)
 Service workers are event-driven. They spin up on an event (message, install), run the handler, and are terminated when idle. Quick Intel's worker never relies on in-memory state — every handler reads/writes through `chrome.storage.local`. The top-level `chrome.runtime.onMessage.addListener` re-registers on every wake-up, which is the intended pattern.
@@ -152,7 +154,7 @@ src/
 | --- | --- |
 | "This page can't be summarized" | Browser-internal URLs (`chrome://`, Web Store) are blocked by Chrome, not us. Use a regular site. |
 | "Not enough content" | Page may still be loading, or it's mostly rendered client-side. Wait a moment and retry. |
-| OpenAI 401 / Anthropic 401 | Key is invalid or missing. Check Settings. OpenAI keys start with `sk-`; Anthropic keys start with `sk-ant-`. |
+| OpenAI 401 / Anthropic 401 / Gemini 400 | Key is invalid or missing. Check Settings. OpenAI keys start with `sk-`; Anthropic keys start with `sk-ant-`; Gemini keys start with `AIza`. |
 | Popup shows blank after code change | Reload the extension from `chrome://extensions`. |
 | Service worker not updating | In `chrome://extensions`, click the refresh icon on the Quick Intel card. |
 

@@ -15,7 +15,7 @@ import {
 import { AppError, toAppError } from '../utils/errors';
 import { isRestrictedUrl } from '../utils/url-guard';
 import { logger } from '../utils/logger';
-import type { RuntimeMessage, RuntimeResponse, SummaryRecord } from '../types';
+import type { Provider, RuntimeMessage, RuntimeResponse, SummaryRecord } from '../types';
 
 chrome.runtime.onInstalled.addListener((details) => {
   logger.debug('Installed/updated:', details.reason);
@@ -38,7 +38,7 @@ chrome.runtime.onMessage.addListener(
 async function handleMessage(message: RuntimeMessage): Promise<unknown> {
   switch (message.type) {
     case 'SUMMARIZE_ACTIVE_TAB':
-      return summarizeActiveTab(message.style);
+      return summarizeActiveTab(message.style, message.customInstructions, message.providerOverride);
     case 'GET_HISTORY':
       return getHistory();
     case 'CLEAR_HISTORY':
@@ -59,7 +59,11 @@ async function handleMessage(message: RuntimeMessage): Promise<unknown> {
   }
 }
 
-async function summarizeActiveTab(style: SummaryRecord['style']): Promise<SummaryRecord> {
+async function summarizeActiveTab(
+  style: SummaryRecord['style'],
+  customInstructions?: string,
+  providerOverride?: Provider,
+): Promise<SummaryRecord> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) throw new AppError('NO_ACTIVE_TAB', 'No active tab found.');
 
@@ -92,6 +96,8 @@ async function summarizeActiveTab(style: SummaryRecord['style']): Promise<Summar
     title: extracted.title,
     style,
     settings,
+    customInstructions,
+    providerOverride,
   });
 
   const record: SummaryRecord = {

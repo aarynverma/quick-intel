@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quick Intel — AI Page Summarizer for Chrome</title>
+  <meta name="description" content="Summarize any web page in seconds using OpenAI, Anthropic, or Google Gemini. Free tier available. Your key, your data, your device." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --brand-50: #eef2ff;
+      --brand-100: #e0e7ff;
+      --brand-500: #6366f1;
+      --brand-600: #4f46e5;
+      --brand-700: #4338ca;
+      --bg: #0a0f1e;
+      --surface: #111827;
+      --surface-2: #1e293b;
+      --border: #1e293b;
+      --border-2: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --faint: #475569;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── NAV ───────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 60px;
+      background: rgba(10, 15, 30, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text);
+    }
+
+    .nav-logo {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-logo svg { width: 16px; height: 16px; fill: white; }
+
+    .nav-links {
+      display: flex; align-items: center; gap: 28px;
+    }
+    .nav-links a {
+      font-size: 14px; color: var(--muted);
+      transition: color .15s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--brand-600);
+      color: white;
+      font-size: 14px; font-weight: 600;
+      padding: 9px 20px;
+      border-radius: 8px;
+      transition: background .15s, transform .1s;
+      cursor: pointer; border: none;
+    }
+    .btn-primary:hover { background: var(--brand-700); transform: translateY(-1px); }
+    .btn-primary svg { width: 16px; height: 16px; fill: white; }
+
+    /* ── HERO ──────────────────────────────────────── */
+    .hero {
+      position: relative;
+      text-align: center;
+      padding: 100px 24px 80px;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      width: 800px; height: 500px;
+      background: radial-gradient(ellipse at center, rgba(99,102,241,.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(99,102,241,.12);
+      border: 1px solid rgba(99,102,241,.3);
+      color: #a5b4fc;
+      font-size: 12px; font-weight: 600;
+      padding: 5px 12px; border-radius: 99px;
+      margin-bottom: 28px;
+      letter-spacing: .02em;
+    }
+    .hero-eyebrow span { color: #6ee7b7; }
+
+    .hero h1 {
+      font-size: clamp(40px, 6vw, 72px);
+      font-weight: 800;
+      letter-spacing: -.03em;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #f1f5f9 30%, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, #818cf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 520px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .hero-cta {
+      display: flex; align-items: center; justify-content: center;
+      gap: 14px; flex-wrap: wrap;
+    }
+
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 14px; font-weight: 500;
+      padding: 9px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--border-2);
+      transition: color .15s, border-color .15s;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { color: var(--text); border-color: #475569; }
+
+    .hero-note {
+      margin-top: 16px;
+      font-size: 12px;
+      color: var(--faint);
+    }
+
+    /* ── POPUP MOCKUP ──────────────────────────────── */
+    .mockup-wrap {
+      position: relative;
+      max-width: 360px;
+      margin: 64px auto 0;
+    }
+
+    .mockup-glow {
+      position: absolute;
+      inset: -40px;
+      background: radial-gradient(ellipse at center, rgba(99,102,241,.25) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    .popup-chrome {
+      position: relative;
+      background: #111827;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.04);
+    }
+
+    .popup-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #1e293b;
+      background: #0f172a;
+    }
+    .popup-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    .popup-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .popup-icon {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .popup-icon svg { width: 14px; height: 14px; fill: white; }
+    .popup-title { font-size: 14px; font-weight: 700; color: #f1f5f9; }
+    .popup-sub { font-size: 10px; color: #64748b; }
+
+    .popup-tabs {
+      display: flex;
+      border-bottom: 1px solid #1e293b;
+    }
+    .popup-tab {
+      flex: 1; text-align: center;
+      padding: 8px; font-size: 11px; color: #64748b;
+    }
+    .popup-tab.active {
+      color: #818cf8;
+      border-bottom: 2px solid #4f46e5;
+      margin-bottom: -1px;
+    }
+
+    .popup-body { padding: 14px; }
+
+    .popup-label { font-size: 10px; font-weight: 600; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+
+    .popup-select {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 8px; padding: 8px 12px;
+      font-size: 12px; color: #e2e8f0;
+      margin-bottom: 12px;
+    }
+    .popup-select span { color: #64748b; font-size: 11px; }
+
+    .popup-btn {
+      width: 100%; background: #4f46e5; color: white;
+      font-size: 13px; font-weight: 600;
+      padding: 10px; border-radius: 8px;
+      text-align: center; margin-bottom: 14px;
+    }
+
+    .popup-card {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 10px; overflow: hidden;
+    }
+    .popup-card-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; background: #0f172a;
+      border-bottom: 1px solid #334155;
+    }
+    .popup-badge {
+      background: #312e81; color: #a5b4fc;
+      font-size: 9px; font-weight: 700;
+      padding: 2px 7px; border-radius: 4px;
+    }
+    .popup-time { font-size: 9px; color: #64748b; }
+    .popup-card-body { padding: 10px 12px; }
+    .popup-card-title { font-size: 11px; font-weight: 600; color: #e2e8f0; margin-bottom: 6px; }
+    .popup-line { height: 7px; border-radius: 4px; background: #334155; margin-bottom: 5px; }
+
+    /* ── SECTION SCAFFOLD ──────────────────────────── */
+    section { padding: 96px 24px; }
+
+    .section-label {
+      display: inline-block;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .1em;
+      color: #818cf8; margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800; letter-spacing: -.02em;
+      color: var(--text); line-height: 1.15;
+      margin-bottom: 14px;
+    }
+
+    .section-sub {
+      font-size: 16px; color: var(--muted);
+      max-width: 500px; line-height: 1.7;
+    }
+
+    .section-center { text-align: center; }
+    .section-center .section-sub { margin: 0 auto; }
+
+    .container { max-width: 1080px; margin: 0 auto; }
+
+    /* ── HOW IT WORKS ──────────────────────────────── */
+    #how { background: var(--surface); }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 2px;
+      margin-top: 56px;
+      background: var(--border-2);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .step {
+      background: var(--surface);
+      padding: 36px 32px;
+    }
+
+    .step-num {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: rgba(99,102,241,.15);
+      border: 1px solid rgba(99,102,241,.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800;
+      color: #818cf8;
+      margin-bottom: 20px;
+    }
+
+    .step h3 {
+      font-size: 17px; font-weight: 700;
+      color: var(--text); margin-bottom: 8px;
+    }
+
+    .step p { font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+    /* ── FEATURES ──────────────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-top: 56px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border-2);
+      border-radius: 14px;
+      padding: 28px;
+      transition: border-color .2s;
+    }
+    .feature-card:hover { border-color: rgba(99,102,241,.5); }
+
+    .feature-icon {
+      width: 42px; height: 42px;
+      border-radius: 10px;
+      background: rgba(99,102,241,.12);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 18px;
+    }
+    .feature-icon svg { width: 20px; height: 20px; }
+
+    .feature-card h3 {
+      font-size: 16px; font-weight: 700;
+      color: var(--text); margin-bottom: 8px;
+    }
+    .feature-card p { font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+    /* ── PROVIDERS ─────────────────────────────────── */
+    #providers { background: var(--surface); }
+
+    .providers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 56px;
+    }
+
+    .provider-card {
+      position: relative;
+      background: #0f172a;
+      border: 1px solid var(--border-2);
+      border-radius: 16px;
+      padding: 32px 28px;
+      transition: border-color .2s, transform .2s;
+    }
+    .provider-card:hover { transform: translateY(-2px); }
+
+    .provider-card.featured {
+      border-color: rgba(16, 185, 129, .4);
+      background: linear-gradient(145deg, #0f2820 0%, #0f172a 100%);
+    }
+    .provider-card.featured:hover { border-color: rgba(16,185,129,.7); }
+
+    .provider-pill {
+      position: absolute; top: 16px; right: 16px;
+      background: #064e3b; color: #6ee7b7;
+      font-size: 10px; font-weight: 700;
+      padding: 3px 9px; border-radius: 99px;
+      letter-spacing: .04em;
+    }
+
+    .provider-name {
+      font-size: 20px; font-weight: 800;
+      color: var(--text); margin-bottom: 4px;
+    }
+    .provider-model {
+      font-size: 12px; color: var(--faint);
+      font-family: "SF Mono", "Fira Code", monospace;
+      margin-bottom: 20px;
+    }
+    .provider-desc { font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+    .provider-link {
+      display: inline-flex; align-items: center; gap: 5px;
+      margin-top: 20px; font-size: 12px; font-weight: 600;
+      color: #818cf8; transition: color .15s;
+    }
+    .provider-link:hover { color: #a5b4fc; }
+    .provider-link svg { width: 12px; height: 12px; fill: currentColor; }
+
+    /* ── PRIVACY ───────────────────────────────────── */
+    .privacy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 56px;
+    }
+
+    .privacy-item {
+      display: flex; align-items: flex-start; gap: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border-2);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .privacy-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #34d399; flex-shrink: 0; margin-top: 5px;
+    }
+
+    .privacy-item h4 { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .privacy-item p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    /* ── CTA BAND ──────────────────────────────────── */
+    .cta-band {
+      text-align: center;
+      padding: 96px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-band::before {
+      content: '';
+      position: absolute; top: -100px; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 400px;
+      background: radial-gradient(ellipse, rgba(99,102,241,.2) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta-band h2 {
+      font-size: clamp(28px, 4vw, 48px);
+      font-weight: 800; letter-spacing: -.02em;
+      color: var(--text); margin-bottom: 14px;
+    }
+
+    .cta-band p {
+      font-size: 17px; color: var(--muted);
+      max-width: 440px; margin: 0 auto 36px;
+      line-height: 1.7;
+    }
+
+    /* ── FOOTER ────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+    }
+
+    .footer-inner {
+      max-width: 1080px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+    }
+
+    .footer-brand { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--text); }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { font-size: 13px; color: var(--faint); transition: color .15s; }
+    .footer-links a:hover { color: var(--muted); }
+    .footer-copy { font-size: 12px; color: var(--faint); }
+
+    /* ── CHROME LOGO ───────────────────────────────── */
+    .chrome-icon {
+      display: inline-block;
+      width: 18px; height: 18px;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+
+    @media (max-width: 640px) {
+      nav { padding: 0 16px; }
+      .nav-links { display: none; }
+      section { padding: 64px 16px; }
+      .hero { padding: 72px 16px 56px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a href="#" class="nav-brand">
+      <div class="nav-logo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 L5 14 L11 14 L10 22 L19 10 L13 10 L14 2 Z"/></svg>
+      </div>
+      Quick Intel
+    </a>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#providers">Providers</a>
+      <a href="#privacy">Privacy</a>
+    </div>
+    <a href="https://chromewebstore.google.com" class="btn-primary">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+      Add to Chrome
+    </a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-eyebrow">
+      Free tier available &nbsp;·&nbsp; <span>No credit card needed</span>
+    </div>
+    <h1>Get the gist.<br/><em>In seconds.</em></h1>
+    <p class="hero-sub">
+      Quick Intel summarizes any web page using the AI provider you trust —
+      right from your browser toolbar. TL;DR, bullets, or a deep-dive. Your call.
+    </p>
+    <div class="hero-cta">
+      <a href="https://chromewebstore.google.com" class="btn-primary" style="font-size:15px;padding:12px 28px">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+        Add to Chrome — Free
+      </a>
+      <a href="https://quick-intel-sigma.vercel.app" class="btn-secondary">
+        Privacy policy
+      </a>
+    </div>
+    <p class="hero-note">Works with OpenAI · Anthropic · Google Gemini</p>
+
+    <!-- Popup Mockup -->
+    <div class="mockup-wrap">
+      <div class="mockup-glow"></div>
+      <div class="popup-chrome">
+        <div class="popup-bar">
+          <div class="popup-dot" style="background:#ff5f56"></div>
+          <div class="popup-dot" style="background:#ffbd2e"></div>
+          <div class="popup-dot" style="background:#27c93f"></div>
+        </div>
+        <div class="popup-header">
+          <div class="popup-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 L5 14 L11 14 L10 22 L19 10 L13 10 L14 2 Z"/></svg>
+          </div>
+          <div>
+            <div class="popup-title">Quick Intel</div>
+            <div class="popup-sub">AI page summarizer</div>
+          </div>
+        </div>
+        <div class="popup-tabs">
+          <div class="popup-tab active">Summarize</div>
+          <div class="popup-tab">History (3)</div>
+          <div class="popup-tab">Settings</div>
+        </div>
+        <div class="popup-body">
+          <div class="popup-label">Summary style</div>
+          <div class="popup-select">
+            TL;DR — Quick 2–3 sentence summary
+            <span>▾</span>
+          </div>
+          <div class="popup-btn">Summarize this page</div>
+          <div class="popup-card">
+            <div class="popup-card-head">
+              <span class="popup-badge">TL;DR</span>
+              <span class="popup-time">just now</span>
+            </div>
+            <div class="popup-card-body">
+              <div class="popup-card-title">The State of AI in 2025</div>
+              <div class="popup-line" style="width:100%"></div>
+              <div class="popup-line" style="width:88%"></div>
+              <div class="popup-line" style="width:72%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <div class="container section-center">
+      <span class="section-label">How it works</span>
+      <h2 class="section-title">Three clicks. One sharp summary.</h2>
+      <p class="section-sub">No accounts. No sign-up. Just you, your API key, and the page you're reading.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Click the icon</h3>
+          <p>Hit the Quick Intel bolt in your Chrome toolbar on any article, blog post, or documentation page.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Pick your style</h3>
+          <p>Choose TL;DR for a quick take, bullet points for a scannable list, or detailed for a full breakdown.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Read the gist</h3>
+          <p>Your AI provider returns a sharp, actionable summary in seconds. Copy it or browse your history anytime.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="container">
+      <span class="section-label">Features</span>
+      <h2 class="section-title">Everything you need.<br/>Nothing you don't.</h2>
+      <div class="features-grid">
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" aria-hidden="true">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Three summary styles</h3>
+          <p>TL;DR for quick skimming, bullet points for structured takeaways, or a multi-paragraph breakdown for deep reading.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" aria-hidden="true">
+              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Summary history</h3>
+          <p>Your last 50 summaries are saved locally and always one click away. Browse, copy, or reopen the original page.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" aria-hidden="true">
+              <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>One-click copy</h3>
+          <p>Copy any summary to your clipboard instantly with visual confirmation. Paste it into notes, Slack, or email.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" aria-hidden="true">
+              <path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Custom instructions</h3>
+          <p>Add a personal prompt to any summary — "focus on the data", "explain like I'm 5", or anything else.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" aria-hidden="true">
+              <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Multi-provider support</h3>
+          <p>Configure keys for OpenAI, Anthropic, and Gemini. Switch between them per session without going to Settings.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" aria-hidden="true">
+              <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Dark mode</h3>
+          <p>Follows your system preference automatically, or lock it to light or dark in Settings. No eye strain at midnight.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- PROVIDERS -->
+  <section id="providers">
+    <div class="container section-center">
+      <span class="section-label">AI Providers</span>
+      <h2 class="section-title">Your key. Your choice.</h2>
+      <p class="section-sub">Connect any of the three leading AI providers. Start free with Gemini — no credit card, no commitment.</p>
+      <div class="providers-grid">
+
+        <div class="provider-card featured">
+          <div class="provider-pill">★ Free tier</div>
+          <div class="provider-name">Google Gemini</div>
+          <div class="provider-model">gemini-flash-latest</div>
+          <p class="provider-desc">Get started at zero cost. Gemini's free tier offers 15 requests per minute with no credit card required — the best way to try Quick Intel today.</p>
+          <a class="provider-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
+            Get free key
+            <svg viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/></svg>
+          </a>
+        </div>
+
+        <div class="provider-card">
+          <div class="provider-name">OpenAI</div>
+          <div class="provider-model">gpt-4o-mini · gpt-4o</div>
+          <p class="provider-desc">Industry standard. GPT-4o mini delivers fast, high-quality summaries at under $0.001 per page — fractions of a penny per summary.</p>
+          <a class="provider-link" href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">
+            Get API key
+            <svg viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/></svg>
+          </a>
+        </div>
+
+        <div class="provider-card">
+          <div class="provider-name">Anthropic</div>
+          <div class="provider-model">claude-haiku-4-5 · sonnet-4-5</div>
+          <p class="provider-desc">Claude's nuanced understanding shines on complex, long-form content. Haiku 4.5 is fast and affordable; Sonnet steps up for quality-critical work.</p>
+          <a class="provider-link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
+            Get API key
+            <svg viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/></svg>
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- PRIVACY -->
+  <section id="privacy">
+    <div class="container">
+      <span class="section-label">Privacy</span>
+      <h2 class="section-title">We have no servers.<br/>We never see your data.</h2>
+      <div class="privacy-grid">
+        <div class="privacy-item">
+          <div class="privacy-dot"></div>
+          <div>
+            <h4>Keys stay on your device</h4>
+            <p>API keys are stored only in <code style="font-size:11px;color:#a5b4fc">chrome.storage.local</code> — never in our servers, never in a database, never anywhere we can see.</p>
+          </div>
+        </div>
+        <div class="privacy-item">
+          <div class="privacy-dot"></div>
+          <div>
+            <h4>Direct API calls only</h4>
+            <p>When you summarize, page text goes directly from your browser to OpenAI / Anthropic / Google. It doesn't pass through us.</p>
+          </div>
+        </div>
+        <div class="privacy-item">
+          <div class="privacy-dot"></div>
+          <div>
+            <h4>No tracking or analytics</h4>
+            <p>No usage tracking. No telemetry. No crash reports phoning home. The extension is entirely self-contained.</p>
+          </div>
+        </div>
+        <div class="privacy-item">
+          <div class="privacy-dot"></div>
+          <div>
+            <h4>Minimum permissions</h4>
+            <p><code style="font-size:11px;color:#a5b4fc">activeTab</code> only — no broad access to all sites. Content is extracted on demand, not by a persistent script.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-band">
+    <h2>Start reading smarter today.</h2>
+    <p>Free to install. Free to start with Gemini. Takes 2 minutes to set up.</p>
+    <a href="https://chromewebstore.google.com" class="btn-primary" style="font-size:16px;padding:14px 32px;margin:0 auto">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      Add Quick Intel to Chrome
+    </a>
+    <p style="margin-top:16px;font-size:12px;color:var(--faint)">Chrome · Manifest V3 · MIT License</p>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="nav-logo" style="width:24px;height:24px;border-radius:6px">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:white" aria-hidden="true"><path d="M13 2 L5 14 L11 14 L10 22 L19 10 L13 10 L14 2 Z"/></svg>
+        </div>
+        Quick Intel
+      </div>
+      <div class="footer-links">
+        <a href="https://quick-intel-sigma.vercel.app" target="_blank" rel="noreferrer">Privacy Policy</a>
+        <a href="mailto:dev@aryanverma.co">Contact</a>
+      </div>
+      <p class="footer-copy">© 2026 Quick Intel · MIT License</p>
+    </div>
+  </footer>
+
+</body>
+</html>

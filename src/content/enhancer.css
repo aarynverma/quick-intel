@@ -1,0 +1,3 @@
+/* Quick Intel v2 — content script host styles.
+   All component styles live inside Shadow DOM within enhancer.ts.
+   This file exists so CRXJS includes it in the content_scripts bundle. */

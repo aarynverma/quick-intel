@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import type { SummaryStyle } from '../../types';
 
 interface Props {
@@ -6,41 +7,83 @@ interface Props {
   disabled?: boolean;
 }
 
-const OPTIONS: { id: SummaryStyle; label: string; description: string }[] = [
-  { id: 'tldr', label: 'TL;DR', description: 'Quick 2–3 sentence summary' },
-  { id: 'bullets', label: 'Bullet points', description: '5–8 key takeaways' },
-  { id: 'detailed', label: 'Detailed', description: 'Multi-paragraph breakdown' },
+const OPTIONS: { id: SummaryStyle; label: string; meta: string }[] = [
+  { id: 'tldr',     label: 'TL;DR',        meta: '· single line · <30w' },
+  { id: 'bullets',  label: 'Bullet points', meta: '· concise · ~120w' },
+  { id: 'detailed', label: 'Detailed',      meta: '· multi-paragraph' },
 ];
 
 export default function StyleDropdown({ value, onChange, disabled }: Props) {
-  const current = OPTIONS.find((o) => o.id === value)!;
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = OPTIONS.find((o) => o.id === value) ?? OPTIONS[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open]);
 
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Summary style</label>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value as SummaryStyle)}
-          disabled={disabled}
-          className="w-full cursor-pointer appearance-none rounded-lg border border-slate-200 bg-white px-3 py-2 pr-9 text-sm text-slate-900 shadow-sm transition hover:border-slate-300 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-slate-600 dark:disabled:bg-slate-900"
-        >
-          {OPTIONS.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <svg
-          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
-        </svg>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '14px 0 6px' }}>
+        <span style={{ fontFamily: 'var(--qi-mono)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--qi-muted)', fontWeight: 500 }}>Style</span>
+        <span style={{ fontFamily: 'var(--qi-mono)', fontSize: 10.5, color: 'var(--qi-muted2)' }}>↓ {current.label}</span>
       </div>
-      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{current.description}</p>
+
+      <div className="qi-dd-wrap" ref={ref}>
+        <button
+          type="button"
+          className={`qi-dd-trigger${open ? ' open' : ''}${disabled ? ' disabled' : ''}`}
+          onClick={() => !disabled && setOpen((v) => !v)}
+          disabled={disabled}
+          style={{ opacity: disabled ? 0.5 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <span>{current.label}</span>
+            <span className="qi-dd-meta">{current.meta}</span>
+          </span>
+          <svg className="qi-dd-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+
+        {open && (
+          <div className="qi-dd-list">
+            {OPTIONS.map((o) => {
+              const sel = o.id === value;
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  className={`qi-dd-item${sel ? ' selected' : ''}`}
+                  onClick={() => { onChange(o.id); setOpen(false); }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>{o.label}</span>
+                    <span className="qi-dd-meta">{o.meta}</span>
+                  </span>
+                  {sel && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, color: 'var(--qi-brand)', flexShrink: 0 }} aria-hidden="true">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

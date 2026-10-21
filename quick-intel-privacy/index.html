@@ -215,15 +215,15 @@
       </div>
       <div class="header-text">
         <h1>Quick Intel</h1>
-        <p>AI page summarizer · Chrome Extension</p>
+        <p>Understand more. Prompt better. · Chrome Extension</p>
       </div>
     </div>
 
     <!-- Hero -->
     <div class="hero">
       <h2>Privacy Policy</h2>
-      <p>Quick Intel is a Chrome extension that summarizes web pages using AI. We collect nothing from you.</p>
-      <div class="badge">No servers &nbsp;·&nbsp; No tracking &nbsp;·&nbsp; No data collection</div>
+      <p>Quick Intel is a Chrome extension that summarizes web pages and enhances AI prompts. We collect nothing from you.</p>
+      <div class="badge">No tracking &nbsp;·&nbsp; No data collection &nbsp;·&nbsp; No analytics</div>
     </div>
 
     <!-- What stays on device -->
@@ -251,7 +251,7 @@
           </div>
         </div>
         <p style="margin-top:16px;padding-top:16px;border-top:1px solid #334155">
-          We have no servers. <strong>We never see any of this.</strong>
+          This data never leaves your browser to us. <strong>We do not operate any servers that receive your personal data.</strong>
         </p>
       </div>
     </div>
@@ -261,9 +261,7 @@
       <p class="section-title">What gets sent externally</p>
       <div class="card">
         <p>
-          When you click <strong>"Summarize,"</strong> the current page's text is sent to the LLM provider
-          you selected (OpenAI, Anthropic, or Google Gemini), authenticated with <strong>your own API key</strong>.
-          The summary is returned directly to your browser. We are not involved in this exchange in any way.
+          When you <strong>summarize a page</strong>, the page's visible text is sent directly from your browser to the LLM provider you selected (OpenAI, Anthropic, or Google Gemini), authenticated with your own API key. When you <strong>enhance a prompt</strong>, the text you typed is sent the same way. The response is returned directly to your browser. We are not involved in this exchange in any way.
         </p>
       </div>
     </div>
@@ -310,7 +308,11 @@
           </div>
           <div class="perm">
             <span class="perm-name">scripting</span>
-            <span class="perm-desc">Inject a self-contained content extractor on demand to read the page's visible text.</span>
+            <span class="perm-desc">Inject a self-contained content extractor on demand to read the page's visible text for summarization.</span>
+          </div>
+          <div class="perm">
+            <span class="perm-name">content_scripts (all_urls)</span>
+            <span class="perm-desc">The Prompt Enhancer injects a small bolt button into text fields on sites you visit. It reads only the text you have typed in that field when you click enhance. It does not read page content passively.</span>
           </div>
           <div class="perm">
             <span class="perm-name">host_permissions</span>
@@ -318,7 +320,7 @@
               Direct API access to <code style="font-size:11px;color:#a5b4fc">api.openai.com</code>,
               <code style="font-size:11px;color:#a5b4fc">api.anthropic.com</code>, and
               <code style="font-size:11px;color:#a5b4fc">generativelanguage.googleapis.com</code>
-              — solely to send page text to your chosen LLM.
+              — solely to send your text to your chosen LLM provider.
             </span>
           </div>
         </div>
@@ -327,7 +329,7 @@
 
     <!-- Footer -->
     <div class="footer">
-      <p>Last updated: 28 Apr 2026</p>
+      <p>Last updated: 25 May 2026</p>
       <a href="mailto:dev@aryanverma.co">dev@aryanverma.co</a>
     </div>
 

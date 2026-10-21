@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { SummaryRecord } from '../../types';
 
 interface Props {
@@ -13,6 +14,23 @@ const STYLE_LABELS: Record<SummaryRecord['style'], string> = {
   detailed: 'Detailed',
 };
 
+// Deterministic color from string
+const FAVE_COLORS = [
+  'linear-gradient(135deg,#d97757,#c45a39)',
+  'linear-gradient(135deg,#000,#333)',
+  'linear-gradient(135deg,#ff5722,#c4451c)',
+  'linear-gradient(135deg,#1da1f2,#0d6db8)',
+  'linear-gradient(135deg,#2da44e,#1a7f37)',
+  'linear-gradient(135deg,#6366f1,#4f46e5)',
+  'linear-gradient(135deg,#1c5fae,#0f3a73)',
+  'linear-gradient(135deg,#8b5cf6,#7c3aed)',
+];
+function favColor(s: string): string {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) n = (n * 31 + s.charCodeAt(i)) >>> 0;
+  return FAVE_COLORS[n % FAVE_COLORS.length];
+}
+
 function formatRelative(ts: number): string {
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60_000);
@@ -21,73 +39,198 @@ function formatRelative(ts: number): string {
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(ts).toLocaleDateString();
+  return days < 7 ? `${days}d ago` : new Date(ts).toLocaleDateString();
+}
+
+function groupByDay(items: SummaryRecord[]): { label: string; items: SummaryRecord[] }[] {
+  const groups: Map<string, SummaryRecord[]> = new Map();
+  const now = new Date();
+  for (const item of items) {
+    const d = new Date(item.createdAt);
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / 86_400_000);
+    let label: string;
+    if (diffDays === 0) label = 'Today · ' + d.toLocaleDateString('en', { weekday: 'short', day: '2-digit' });
+    else if (diffDays === 1) label = 'Yesterday · ' + d.toLocaleDateString('en', { weekday: 'short', day: '2-digit' });
+    else label = d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: '2-digit' });
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label)!.push(item);
+  }
+  return [...groups.entries()].map(([label, items]) => ({ label, items }));
 }
 
 export default function HistoryList({ items, onSelect, onDelete, onClearAll }: Props) {
+  const [query, setQuery] = useState('');
+
+  const filtered = query
+    ? items.filter(i => i.title.toLowerCase().includes(query.toLowerCase()) || i.url.toLowerCase().includes(query.toLowerCase()))
+    : items;
+
+  const groups = groupByDay(filtered);
+
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-          <svg className="h-5 w-5 text-slate-400 dark:text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 16px', textAlign: 'center' }}>
+        <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--qi-s2)', border: '1px solid var(--qi-border)', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ width: 18, height: 18, color: 'var(--qi-muted)' }} aria-hidden="true">
+            <path d="M3 6h18M3 12h18M3 18h18" />
           </svg>
         </div>
-        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">No summaries yet</p>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Your past summaries will appear here.</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--qi-text)', margin: 0 }}>No summaries yet</p>
+        <p style={{ fontSize: 11, color: 'var(--qi-muted)', marginTop: 4 }}>Your past summaries will appear here.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between pb-1">
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          {items.length} {items.length === 1 ? 'summary' : 'summaries'}
-        </span>
-        <button
-          onClick={onClearAll}
-          className="text-xs font-medium text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
-        >
-          Clear all
-        </button>
+    <div>
+      {/* Search */}
+      <div style={{
+        height: 36, borderRadius: 10,
+        background: 'var(--qi-s1)',
+        border: '1px solid var(--qi-border)',
+        display: 'flex', alignItems: 'center',
+        padding: '0 10px', gap: 8, marginBottom: 12,
+      }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13, color: 'var(--qi-muted)', flexShrink: 0 }} aria-hidden="true">
+          <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search summaries…"
+          style={{
+            flex: 1, background: 'transparent', border: 'none', outline: 'none',
+            color: 'var(--qi-text)',
+            font: '500 12px -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+          }}
+        />
+        {query && (
+          <button onClick={() => setQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--qi-muted)', fontSize: 14, lineHeight: 1 }}>×</button>
+        )}
       </div>
 
-      {items.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => onSelect(item)}
-          className="group block w-full rounded-lg border border-slate-200 bg-white p-3 text-left transition hover:border-brand-300 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:hover:border-brand-500"
-        >
-          <div className="mb-1 flex items-start justify-between gap-2">
-            <h3 className="line-clamp-1 flex-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-              {item.title}
-            </h3>
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(item.id);
-              }}
-              role="button"
-              tabIndex={0}
-              className="shrink-0 rounded p-1 text-slate-400 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950 dark:hover:text-rose-400"
-              aria-label="Delete"
-            >
-              <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443H3.5a.75.75 0 0 0 0 1.5h.334l.623 10.596A2.75 2.75 0 0 0 7.2 19h5.6a2.75 2.75 0 0 0 2.743-2.71l.623-10.597h.334a.75.75 0 0 0 0-1.5H14v-.443A2.75 2.75 0 0 0 11.25 1h-2.5Zm3.75 3.193V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.443h5Z" clipRule="evenodd" />
-              </svg>
-            </span>
-          </div>
-          <p className="mb-1.5 line-clamp-1 text-[11px] text-slate-500 dark:text-slate-400">{item.url}</p>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-              {STYLE_LABELS[item.style]}
-            </span>
-            <span className="text-[11px] text-slate-400 dark:text-slate-500">{formatRelative(item.createdAt)}</span>
-          </div>
-        </button>
+      {/* Clear all */}
+      {filtered.length > 0 && !query && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+          <button
+            onClick={onClearAll}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#ff8b8b', fontWeight: 600 }}
+          >Clear all</button>
+        </div>
+      )}
+
+      {/* Groups */}
+      {groups.map(group => (
+        <div key={group.label}>
+          <div className="qi-hist-day">{group.label}</div>
+          {group.items.map(item => {
+            let domain = '';
+            try { domain = new URL(item.url).hostname.replace('www.', ''); } catch { /* ignore */ }
+            const letter = (domain[0] || item.title[0] || '?').toUpperCase();
+            return (
+              <HistoryItem
+                key={item.id}
+                item={item}
+                letter={letter}
+                domain={domain}
+                color={favColor(domain || item.id)}
+                onSelect={onSelect}
+                onDelete={onDelete}
+              />
+            );
+          })}
+        </div>
       ))}
+
+      {filtered.length === 0 && query && (
+        <p style={{ fontSize: 12, color: 'var(--qi-muted)', textAlign: 'center', marginTop: 24 }}>No results for "{query}"</p>
+      )}
+    </div>
+  );
+}
+
+function HistoryItem({ item, letter, domain, color, onSelect, onDelete }: {
+  item: SummaryRecord; letter: string; domain: string; color: string;
+  onSelect: (r: SummaryRecord) => void; onDelete: (id: string) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      onClick={() => onSelect(item)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', gap: 10, padding: 10,
+        borderRadius: 10,
+        border: `1px solid ${hovered ? 'var(--qi-border)' : 'transparent'}`,
+        cursor: 'pointer',
+        transition: 'all .15s ease',
+        alignItems: 'flex-start',
+        position: 'relative',
+        background: hovered ? 'var(--qi-s2)' : 'transparent',
+      }}
+    >
+      {/* Favicon */}
+      <div style={{
+        width: 22, height: 22, borderRadius: 6,
+        background: color,
+        flexShrink: 0, display: 'grid', placeItems: 'center',
+        font: '700 10px var(--qi-mono)', color: '#fff',
+        marginTop: 1,
+      }}>{letter}</div>
+
+      {/* Content */}
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{
+          fontSize: 12, fontWeight: 600, color: 'var(--qi-text)',
+          lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          paddingRight: hovered ? 28 : 0,
+        }}>{item.title}</div>
+        <div style={{
+          fontSize: 11, color: 'var(--qi-muted)', lineHeight: 1.4, marginTop: 2,
+          overflow: 'hidden', display: '-webkit-box',
+          WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
+        }}>{item.content.slice(0, 120)}</div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6, marginTop: 6,
+          fontFamily: 'var(--qi-mono)', fontSize: 9.5,
+          color: 'var(--qi-muted2)', textTransform: 'uppercase', letterSpacing: '0.1em',
+        }}>
+          <span style={{
+            height: 16, padding: '0 6px', borderRadius: 999,
+            background: 'rgba(91,94,244,0.12)', border: '1px solid rgba(91,94,244,0.28)',
+            color: '#b3b6ff', fontSize: 9.5, letterSpacing: '0.05em',
+            display: 'inline-flex', alignItems: 'center', textTransform: 'none',
+          }}>{STYLE_LABELS[item.style]}</span>
+          <span>·</span>
+          <span>{formatRelative(item.createdAt)}</span>
+          {domain && <><span>·</span><span>{domain}</span></>}
+        </div>
+      </div>
+
+      {/* Trash — appears on hover */}
+      {hovered && (
+        <button
+          onClick={e => { e.stopPropagation(); onDelete(item.id); }}
+          aria-label="Delete"
+          style={{
+            position: 'absolute', top: 8, right: 8,
+            width: 24, height: 24, borderRadius: 7,
+            background: 'var(--qi-s1)',
+            border: '1px solid var(--qi-border)',
+            color: 'var(--qi-muted)',
+            display: 'grid', placeItems: 'center',
+            cursor: 'pointer',
+            backdropFilter: 'blur(4px)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#ff8b8b'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--qi-muted)'; e.currentTarget.style.borderColor = 'var(--qi-border)'; }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }} aria-hidden="true">
+            <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

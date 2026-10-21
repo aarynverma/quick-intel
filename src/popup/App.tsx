@@ -37,9 +37,9 @@ function sendMessage<T = unknown>(message: RuntimeMessage): Promise<T> {
 
 const PROVIDERS: Provider[] = ['openai', 'anthropic', 'gemini'];
 const PROVIDER_LABELS: Record<Provider, string> = {
-  openai: 'OpenAI',
-  anthropic: 'Anthropic',
-  gemini: 'Gemini',
+  openai:    'GPT-4o',
+  anthropic: 'Claude',
+  gemini:    'Gemini',
 };
 
 type TabId = 'summarize' | 'history' | 'settings';
@@ -55,7 +55,6 @@ export default function App() {
   const [error, setError] = useState<ErrShape | null>(null);
   const [showCustomPrompt, setShowCustomPrompt] = useState(false);
   const [customInstructions, setCustomInstructions] = useState('');
-  // Per-session provider override — null means use the saved default.
   const [providerOverride, setProviderOverride] = useState<Provider | null>(null);
 
   const refresh = useCallback(async () => {
@@ -73,9 +72,11 @@ export default function App() {
 
   useEffect(() => {
     refresh();
+    if (new URLSearchParams(window.location.search).get('tab') === 'settings') {
+      setTab('settings');
+    }
   }, [refresh]);
 
-  // Reset session provider selection when the saved default changes.
   useEffect(() => {
     setProviderOverride(null);
   }, [publicSettings?.provider]);
@@ -84,8 +85,9 @@ export default function App() {
     ? PROVIDERS.filter((p) => publicSettings.hasApiKey[p])
     : [];
 
-  // Show Welcome screen only when no provider has any key configured.
   const needsApiKey = publicSettings !== null && configuredProviders.length === 0;
+
+  const activeProvider = providerOverride ?? publicSettings?.provider;
 
   const handleSummarize = async () => {
     setError(null);
@@ -129,16 +131,19 @@ export default function App() {
     setTab('summarize');
   };
 
+  const handleResumeEnhancer = async () => {
+    await sendMessage({ type: 'PAUSE_ENHANCER', hours: 0 });
+    await refresh();
+  };
+
   const handleSelectHistory = (record: SummaryRecord) => {
     setCurrentSummary(record);
     setTab('summarize');
   };
 
-  const activeProvider = providerOverride ?? publicSettings?.provider;
-
   return (
-    <div className="flex h-full flex-col bg-white dark:bg-slate-900">
-      <Header />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--qi-bg)' }}>
+      <Header onSettingsClick={() => setTab('settings')} />
       <TabBar
         active={tab}
         onChange={setTab}
@@ -146,29 +151,27 @@ export default function App() {
         needsSetup={needsApiKey}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 14px 20px' }}>
         {tab === 'summarize' && needsApiKey && (
           <Welcome onGetStarted={() => setTab('settings')} />
         )}
 
         {tab === 'summarize' && !needsApiKey && (
-          <div className="space-y-4">
-            {/* Per-session provider selector — only shown when 2+ keys are configured */}
+          <div>
+            {/* Per-session provider selector — only shown when 2+ keys configured */}
             {configuredProviders.length >= 2 && (
-              <div>
-                <p className="mb-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Provider
-                </p>
-                <div className="flex gap-1">
+              <div style={{ marginBottom: 14 }}>
+                <div style={{
+                  fontFamily: 'var(--qi-mono)', fontSize: 10, letterSpacing: '.14em',
+                  textTransform: 'uppercase', color: 'var(--qi-muted)',
+                  marginBottom: 8,
+                }}>Provider</div>
+                <div className="qi-seg">
                   {configuredProviders.map((p) => (
                     <button
                       key={p}
+                      className={activeProvider === p ? 'active' : ''}
                       onClick={() => setProviderOverride(p)}
-                      className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition ${
-                        activeProvider === p
-                          ? 'border-brand-500 bg-brand-50 text-brand-700'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600'
-                      }`}
                     >
                       {PROVIDER_LABELS[p]}
                     </button>
@@ -179,21 +182,29 @@ export default function App() {
 
             <StyleDropdown value={style} onChange={setStyle} disabled={loading} />
 
-            {/* Custom instructions — collapsed by default */}
-            <div>
+            {/* Custom instructions */}
+            <div style={{ marginTop: 12 }}>
               <button
                 type="button"
                 onClick={() => setShowCustomPrompt((v) => !v)}
-                className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontFamily: 'var(--qi-mono)', fontSize: 10, letterSpacing: '.1em',
+                  textTransform: 'uppercase', color: 'var(--qi-muted)',
+                  padding: 0,
+                  transition: 'color .15s ease',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--qi-text)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--qi-muted)'; }}
               >
                 Customize prompt
                 <svg
-                  className={`h-3.5 w-3.5 transition-transform ${showCustomPrompt ? 'rotate-180' : ''}`}
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
+                  style={{ width: 10, height: 10, transition: 'transform .15s ease', transform: showCustomPrompt ? 'rotate(180deg)' : 'rotate(0)' }}
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
                   aria-hidden="true"
                 >
-                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
+                  <polyline points="6 9 12 15 18 9" />
                 </svg>
               </button>
               {showCustomPrompt && (
@@ -202,17 +213,55 @@ export default function App() {
                   onChange={(e) => setCustomInstructions(e.target.value)}
                   placeholder={`e.g., "Focus on technical details" or "Explain like I'm 5"`}
                   rows={3}
-                  className="mt-2 w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  style={{
+                    marginTop: 8,
+                    width: '100%',
+                    resize: 'none',
+                    borderRadius: 10,
+                    border: '1px solid var(--qi-border)',
+                    background: 'var(--qi-s1)',
+                    color: 'var(--qi-text)',
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                    lineHeight: 1.5,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+                    padding: '10px 12px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color .15s ease, box-shadow .15s ease',
+                  }}
+                  onFocus={(e: React.FocusEvent<HTMLTextAreaElement>) => {
+                    e.currentTarget.style.borderColor = 'rgba(91,94,244,.6)';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(91,94,244,.12)';
+                  }}
+                  onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => {
+                    e.currentTarget.style.borderColor = 'var(--qi-border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
               )}
             </div>
 
             <button
+              className={`qi-cta${!loading && !currentSummary ? ' qi-cta-pulse' : ''}`}
               onClick={handleSummarize}
               disabled={loading}
-              className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              {loading ? 'Summarizing…' : 'Summarize this page'}
+              {loading ? (
+                <>
+                  <svg style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                  Summarizing…
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }} aria-hidden="true">
+                    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+                  </svg>
+                  Summarize this page
+                </>
+              )}
             </button>
 
             {error && <ErrorBanner error={error} onDismiss={() => setError(null)} />}
@@ -222,8 +271,12 @@ export default function App() {
             {currentSummary && !loading && <SummaryCard record={currentSummary} />}
 
             {!loading && !currentSummary && !error && (
-              <p className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500">
-                Pick a style, then click summarize. Your API key stays on this device.
+              <p style={{
+                textAlign: 'center', fontSize: 11, color: 'var(--qi-muted2)',
+                marginTop: 18, lineHeight: 1.5,
+              }}>
+                Pick a style, then click summarize.<br />
+                Your API key stays on this device.
               </p>
             )}
           </div>
@@ -239,7 +292,11 @@ export default function App() {
         )}
 
         {tab === 'settings' && publicSettings && (
-          <SettingsPanel publicSettings={publicSettings} onSave={handleSaveSettings} />
+          <SettingsPanel
+            publicSettings={publicSettings}
+            onSave={handleSaveSettings}
+            onResumeEnhancer={handleResumeEnhancer}
+          />
         )}
       </div>
     </div>

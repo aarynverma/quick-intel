@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Quick Intel",
-  "version": "1.0.0",
-  "description": "AI-powered page summarizer. Get the gist of any article in seconds with TL;DR, bullet, or detailed summaries.",
+  "version": "2.0.0",
+  "description": "Understand more. Prompt better. Summarize any web page and sharpen your AI prompts in seconds — powered by OpenAI, Anthropic, or Google Gemini.",
   "action": {
     "default_popup": "src/popup/index.html",
-    "default_title": "Quick Intel — Summarize this page",
+    "default_title": "Quick Intel",
     "default_icon": {
       "16": "public/icons/icon16.png",
       "32": "public/icons/icon32.png",
@@ -22,6 +22,24 @@
   "background": {
     "service_worker": "src/background/service-worker.ts",
     "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/enhancer.ts"],
+      "css": ["src/content/enhancer.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "commands": {
+    "enhance-prompt": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Q",
+        "mac": "Command+Shift+Q"
+      },
+      "description": "Enhance the focused text field with AI"
+    }
   },
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": [

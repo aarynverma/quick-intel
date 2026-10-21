@@ -1,38 +1,39 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Provider, PublicSettings, Settings, Theme } from '../../types';
 
 interface Props {
   publicSettings: PublicSettings;
   onSave: (settings: Settings) => void;
+  onResumeEnhancer: () => void;
 }
 
-const MODEL_OPTIONS: Record<Provider, { value: string; label: string }[]> = {
+const MODEL_OPTIONS: Record<Provider, { value: string; label: string; meta: string }[]> = {
   openai: [
-    { value: 'gpt-4o-mini', label: 'GPT-4o mini (fast & cheap)' },
-    { value: 'gpt-4o', label: 'GPT-4o (best quality)' },
-    { value: 'gpt-4.1-mini', label: 'GPT-4.1 mini' },
+    { value: 'gpt-4o-mini', label: 'GPT-4o mini', meta: '· fast & cheap' },
+    { value: 'gpt-4o',      label: 'GPT-4o',      meta: '· best quality' },
+    { value: 'gpt-4.1-mini',label: 'GPT-4.1 mini', meta: '· latest' },
   ],
   anthropic: [
-    { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (fast)' },
-    { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5 (balanced)' },
+    { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', meta: '· fast' },
+    { value: 'claude-sonnet-4-5',         label: 'Claude Sonnet 4.5', meta: '· 200k ctx' },
   ],
   gemini: [
-    { value: 'gemini-flash-latest', label: 'Gemini Flash (free tier)' },
-    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+    { value: 'gemini-flash-latest', label: 'Gemini Flash', meta: '· free tier' },
+    { value: 'gemini-2.0-flash',    label: 'Gemini 2.0 Flash', meta: '' },
+    { value: 'gemini-2.5-flash',    label: 'Gemini 2.5 Flash', meta: '' },
   ],
 };
 
-const PROVIDER_LABELS: Record<Provider, string> = {
-  openai: 'OpenAI',
-  anthropic: 'Anthropic',
-  gemini: 'Gemini',
-};
+const PROVIDERS: { id: Provider; label: string }[] = [
+  { id: 'openai',    label: 'GPT-4o' },
+  { id: 'anthropic', label: 'Claude' },
+  { id: 'gemini',    label: 'Gemini' },
+];
 
-const THEME_OPTIONS: { id: Theme; label: string }[] = [
+const THEMES: { id: Theme; label: string }[] = [
   { id: 'system', label: 'System' },
-  { id: 'light', label: 'Light' },
-  { id: 'dark', label: 'Dark' },
+  { id: 'light',  label: 'Light' },
+  { id: 'dark',   label: 'Dark' },
 ];
 
 function getInitialModel(provider: Provider, savedModel: string): string {
@@ -42,33 +43,117 @@ function getInitialModel(provider: Provider, savedModel: string): string {
 
 type KeyMode = 'viewing' | 'editing';
 
-export default function SettingsPanel({ publicSettings, onSave }: Props) {
+const CHECKMARK = (
+  <svg className="qi-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+// ── Custom Model Dropdown ─────────────────────────────────────────────────────
+
+function ModelDropdown({ provider, value, onChange }: {
+  provider: Provider; value: string; onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const options = MODEL_OPTIONS[provider];
+  const current = options.find((o) => o.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [open]);
+
+  return (
+    <div className="qi-dd-wrap" ref={ref}>
+      <button type="button" className={`qi-dd-trigger${open ? ' open' : ''}`} onClick={() => setOpen((v) => !v)}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          <span>{current.label}</span>
+          {current.meta && <span className="qi-dd-meta">{current.meta}</span>}
+        </span>
+        <svg className="qi-dd-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="qi-dd-list">
+          {options.map((o) => {
+            const sel = o.value === value;
+            return (
+              <button key={o.value} type="button" className={`qi-dd-item${sel ? ' selected' : ''}`}
+                onClick={() => { onChange(o.value); setOpen(false); }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>{o.label}</span>
+                  {o.meta && <span className="qi-dd-meta">{o.meta}</span>}
+                </span>
+                {sel && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, color: 'var(--qi-brand)', flexShrink: 0 }} aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Settings Panel ────────────────────────────────────────────────────────────
+
+export default function SettingsPanel({ publicSettings, onSave, onResumeEnhancer }: Props) {
   const [provider, setProvider] = useState<Provider>(publicSettings.provider);
   const [model, setModel] = useState(getInitialModel(publicSettings.provider, publicSettings.model));
   const [theme, setTheme] = useState<Theme>(publicSettings.theme ?? 'system');
   const [saving, setSaving] = useState(false);
+  const [enhancerEnabled, setEnhancerEnabled] = useState(publicSettings.enhancer.enabled);
+  const [disabledDomains, setDisabledDomains] = useState<string[]>(publicSettings.enhancer.disabledDomains);
 
-  // Per-provider key state: mode and draft value.
   const [keyModes, setKeyModes] = useState<Record<Provider, KeyMode>>(() => ({
-    openai: publicSettings.hasApiKey.openai ? 'viewing' : 'editing',
+    openai:    publicSettings.hasApiKey.openai    ? 'viewing' : 'editing',
     anthropic: publicSettings.hasApiKey.anthropic ? 'viewing' : 'editing',
-    gemini: publicSettings.hasApiKey.gemini ? 'viewing' : 'editing',
+    gemini:    publicSettings.hasApiKey.gemini    ? 'viewing' : 'editing',
   }));
-  const [draftKeys, setDraftKeys] = useState<Record<Provider, string>>({
-    openai: '',
-    anthropic: '',
-    gemini: '',
-  });
+  const [draftKeys, setDraftKeys] = useState<Record<Provider, string>>({ openai: '', anthropic: '', gemini: '' });
   const [showKey, setShowKey] = useState(false);
 
-  // Derived values for the currently visible provider.
-  const keyMode = keyModes[provider];
-  const hasKey = publicSettings.hasApiKey[provider];
-  const preview = publicSettings.apiKeyPreviews[provider];
+  // Track initial values to detect dirty state
+  const initialRef = useRef({
+    provider: publicSettings.provider,
+    model:    getInitialModel(publicSettings.provider, publicSettings.model),
+    theme:    publicSettings.theme ?? 'system' as Theme,
+    enhancerEnabled: publicSettings.enhancer.enabled,
+    disabledDomains: [...publicSettings.enhancer.disabledDomains],
+  });
 
-  const maskedValue = showKey ? `••••••••••${preview}` : '••••••••••••••';
-  const displayValue = keyMode === 'viewing' ? maskedValue : draftKeys[provider];
-  const inputType = keyMode === 'viewing' ? 'text' : showKey ? 'text' : 'password';
+  const hasAnyKey = Object.values(publicSettings.hasApiKey).some(Boolean);
+  const hasDraftKey = Object.values(draftKeys).some((k) => k.trim() !== '');
+  const init = initialRef.current;
+
+  const isDirty =
+    provider !== init.provider ||
+    model !== init.model ||
+    (theme as string) !== (init.theme as string) ||
+    enhancerEnabled !== init.enhancerEnabled ||
+    disabledDomains.join('\n') !== init.disabledDomains.join('\n') ||
+    hasDraftKey;
+
+  const isSaveEnabled = isDirty || !hasAnyKey;
+
+  const keyMode = keyModes[provider];
+  const hasKey  = publicSettings.hasApiKey[provider];
+  const preview = publicSettings.apiKeyPreviews[provider];
 
   const handleProviderChange = (p: Provider) => {
     setProvider(p);
@@ -78,196 +163,233 @@ export default function SettingsPanel({ publicSettings, onSave }: Props) {
 
   const handleThemeChange = (t: Theme) => {
     setTheme(t);
-    // Apply immediately so the user sees the change before clicking Save.
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const dark = t === 'dark' || (t === 'system' && mq.matches);
     document.documentElement.classList.toggle('dark', dark);
+    document.documentElement.classList.toggle('light', !dark);
   };
 
   const handleKeyFocus = () => {
     if (keyMode === 'viewing') {
-      setKeyModes((m) => ({ ...m, [provider]: 'editing' }));
-      setDraftKeys((d) => ({ ...d, [provider]: '' }));
+      setKeyModes(m => ({ ...m, [provider]: 'editing' }));
+      setDraftKeys(d => ({ ...d, [provider]: '' }));
       setShowKey(false);
     }
   };
-
   const handleKeyBlur = () => {
-    // If user clicked away without typing and a key exists, revert to viewing.
     if (keyMode === 'editing' && draftKeys[provider] === '' && hasKey) {
-      setKeyModes((m) => ({ ...m, [provider]: 'viewing' }));
+      setKeyModes(m => ({ ...m, [provider]: 'viewing' }));
     }
   };
-
   const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (keyMode === 'editing') {
-      setDraftKeys((d) => ({ ...d, [provider]: e.target.value }));
-    }
+    if (keyMode === 'editing') setDraftKeys(d => ({ ...d, [provider]: e.target.value }));
   };
 
   const handleSave = async () => {
     setSaving(true);
     onSave({
       apiKeys: {
-        openai: draftKeys.openai.trim(),
+        openai:    draftKeys.openai.trim(),
         anthropic: draftKeys.anthropic.trim(),
-        gemini: draftKeys.gemini.trim(),
+        gemini:    draftKeys.gemini.trim(),
       },
-      model,
-      provider,
-      theme,
+      model, provider, theme,
+      enhancer: { enabled: enhancerEnabled, disabledDomains },
     });
     setSaving(false);
   };
 
-  const selectClass =
-    'w-full cursor-pointer appearance-none rounded-lg border border-slate-200 bg-white px-3 py-2 pr-9 text-sm text-slate-900 shadow-sm transition hover:border-slate-300 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-slate-600';
+  const displayValue = keyMode === 'viewing'
+    ? (showKey ? `••••••••••${preview}` : '••••••••••••••')
+    : draftKeys[provider];
 
-  const chevron = (
-    <svg
-      className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-      viewBox="0 0 20 20"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
-    </svg>
-  );
+  const sec: React.CSSProperties = { marginBottom: 18 };
 
   return (
-    <div className="space-y-4">
-      {/* Default provider */}
-      <div>
-        <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">
-          Default provider
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {(['openai', 'anthropic', 'gemini'] as const).map((p) => (
-            <button
-              key={p}
-              onClick={() => handleProviderChange(p)}
-              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                provider === p
-                  ? 'border-brand-500 bg-brand-50 text-brand-700'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600'
-              }`}
-            >
-              {PROVIDER_LABELS[p]}
+    <div>
+      {/* ── Provider ── */}
+      <div style={sec}>
+        <div className="qi-sec-h">Provider</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
+          {PROVIDERS.map(p => (
+            <button key={p.id} className={`qi-prov${provider === p.id ? ' active' : ''}`} onClick={() => handleProviderChange(p.id)}>
+              {provider === p.id && CHECKMARK}
+              {p.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Model */}
-      <div>
-        <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Model</label>
-        <div className="relative">
-          <select value={model} onChange={(e) => setModel(e.target.value)} className={selectClass}>
-            {MODEL_OPTIONS[provider].map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          {chevron}
-        </div>
+      {/* ── Model ── */}
+      <div style={sec}>
+        <div className="qi-sec-h">Model</div>
+        <ModelDropdown
+          provider={provider}
+          value={model}
+          onChange={(v) => setModel(v)}
+        />
       </div>
 
-      {/* API Key — per-provider, view/edit mode */}
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-            API key <span className="font-normal text-slate-400 dark:text-slate-500">({PROVIDER_LABELS[provider]})</span>
-          </label>
-          {hasKey && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Key saved
-            </span>
-          )}
-        </div>
-        <div className="relative">
-          <input
-            type={inputType}
-            value={displayValue}
-            readOnly={keyMode === 'viewing'}
-            onFocus={handleKeyFocus}
-            onBlur={handleKeyBlur}
-            onChange={handleKeyChange}
-            placeholder={
-              keyMode === 'editing' && !hasKey
-                ? provider === 'gemini'
-                  ? 'AIza...'
-                  : 'sk-...'
-                : undefined
-            }
-            autoComplete="off"
-            spellCheck={false}
-            className={`w-full rounded-lg border px-3 py-2 pr-20 text-sm shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-100 dark:placeholder:text-slate-500 ${
-              keyMode === 'viewing'
-                ? 'cursor-pointer border-slate-200 bg-slate-50 text-slate-500 focus:border-brand-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400'
-                : 'border-brand-400 bg-white text-slate-900 focus:border-brand-500 dark:border-brand-600 dark:bg-slate-800 dark:text-slate-100'
-            }`}
-          />
-          {/* Show/Hide — always visible */}
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()} // don't steal focus from input
-            onClick={() => setShowKey((v) => !v)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
-          >
-            {showKey ? 'Hide' : 'Show'}
-          </button>
-        </div>
-        {keyMode === 'viewing' && (
-          <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Click the field to change your key.</p>
-        )}
-        {keyMode === 'editing' && hasKey && (
-          <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Click away to cancel and keep your saved key.</p>
-        )}
-      </div>
-
-      {/* Theme */}
-      <div>
-        <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Theme</label>
-        <div className="grid grid-cols-3 gap-2">
-          {THEME_OPTIONS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => handleThemeChange(t.id)}
-              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                theme === t.id
-                  ? 'border-brand-500 bg-brand-50 text-brand-700'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600'
-              }`}
-            >
+      {/* ── Theme ── */}
+      <div style={sec}>
+        <div className="qi-sec-h">Theme</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
+          {THEMES.map(t => (
+            <button key={t.id} className={`qi-prov${theme === t.id ? ' active' : ''}`} onClick={() => handleThemeChange(t.id)}>
+              {theme === t.id && CHECKMARK}
               {t.label}
             </button>
           ))}
         </div>
       </div>
 
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-      >
-        {saving ? 'Saving…' : 'Save settings'}
-      </button>
+      {/* ── API Key ── */}
+      <div style={sec}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div className="qi-sec-h" style={{ margin: 0, flex: 1 }}>
+            API Key
+            <span style={{ fontFamily: 'var(--qi-mono)', fontSize: 9, color: 'var(--qi-muted2)', textTransform: 'none', letterSpacing: '0.04em', marginLeft: 4 }}>
+              ({PROVIDERS.find(p => p.id === provider)?.label})
+            </span>
+          </div>
+          {hasKey && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '600 10.5px -apple-system, BlinkMacSystemFont, system-ui, sans-serif', color: 'var(--qi-green)' }}>
+              <span style={{ width: 14, height: 14, borderRadius: '50%', background: 'rgba(16,185,129,0.18)', border: '1px solid rgba(16,185,129,0.55)', display: 'grid', placeItems: 'center', color: 'var(--qi-green)' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 8, height: 8 }} aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+              </span>
+              Saved
+            </span>
+          )}
+        </div>
+        <div className={`qi-keyfield${keyMode === 'editing' ? ' editing' : ''}`}>
+          <input
+            type={keyMode === 'viewing' ? 'text' : showKey ? 'text' : 'password'}
+            value={displayValue}
+            className={keyMode === 'viewing' ? 'masked' : ''}
+            readOnly={keyMode === 'viewing'}
+            onFocus={handleKeyFocus}
+            onBlur={handleKeyBlur}
+            onChange={handleKeyChange}
+            placeholder={keyMode === 'editing' && !hasKey ? (provider === 'gemini' ? 'AIza...' : 'sk-...') : undefined}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <button
+            type="button"
+            className="qi-keyfield-btn"
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => setShowKey(v => !v)}
+          >{showKey ? 'Hide' : 'Show'}</button>
+        </div>
+        <div style={{ fontFamily: 'var(--qi-mono)', fontSize: 10.5, color: 'var(--qi-muted2)', marginTop: 6 }}>
+          {keyMode === 'viewing'
+            ? 'stored locally · never sent to our servers'
+            : hasKey ? 'click away to cancel and keep your saved key' : ''}
+        </div>
+      </div>
 
-      {provider === 'gemini' && (
-        <div className="rounded-lg bg-emerald-50 p-3 text-[11px] leading-relaxed text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-          <strong>Free tier:</strong> Get a free API key at{' '}
-          <span className="font-mono text-[10px]">aistudio.google.com</span>. No credit card required.
+      {/* ── Prompt Enhancer ── */}
+      <div style={sec}>
+        <div className="qi-sec-h">Prompt Enhancer</div>
+        <div style={{ borderTop: '1px solid var(--qi-border)', paddingTop: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--qi-border)' }}>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--qi-text)' }}>Enable enhancer</div>
+              <div style={{ fontSize: 11, color: 'var(--qi-muted)', marginTop: 2, maxWidth: 220, lineHeight: 1.4 }}>
+                Hotkey: <span style={{ fontFamily: 'var(--qi-mono)', fontSize: 10 }}>Ctrl+Shift+Q</span> in any text field
+              </div>
+            </div>
+            <div className="qi-toggle-seg">
+              <button className={enhancerEnabled ? 'active' : ''} onClick={() => setEnhancerEnabled(true)}>On</button>
+              <button className={!enhancerEnabled ? 'active' : ''} onClick={() => setEnhancerEnabled(false)}>Off</button>
+            </div>
+          </div>
+
+          {/* Pause status — shown only when enhancer is paused */}
+          {publicSettings.enhancerPausedUntil && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+              padding: '9px 10px', marginTop: 6, borderRadius: 9,
+              background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.22)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13, color: '#f59e0b', flexShrink: 0 }} aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: '#fbbf24' }}>Enhancer paused</div>
+                  <div style={{ fontSize: 10.5, color: 'rgba(251,191,36,.7)', marginTop: 1 }}>
+                    {Math.max(1, Math.ceil((publicSettings.enhancerPausedUntil - Date.now()) / 60_000))}m remaining
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onResumeEnhancer}
+                style={{
+                  height: 28, padding: '0 10px', borderRadius: 7, flexShrink: 0,
+                  background: 'rgba(245,158,11,.15)', border: '1px solid rgba(245,158,11,.35)',
+                  color: '#fbbf24', fontSize: 11.5, fontWeight: 600,
+                  cursor: 'pointer', whiteSpace: 'nowrap',
+                  transition: 'all .15s ease',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,.25)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245,158,11,.15)'; }}
+              >Resume now</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Disabled on ── */}
+      {disabledDomains.length > 0 && (
+        <div style={sec}>
+          <div className="qi-sec-h">Disabled on</div>
+          <div className="qi-sites-box">
+            {disabledDomains.map(domain => (
+              <span key={domain} className="qi-tag-pill">
+                {domain}
+                <span className="qi-tag-x" onClick={() => setDisabledDomains(d => d.filter(x => x !== domain))}>
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </span>
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
-      <div className="rounded-lg bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-        <strong className="text-slate-900 dark:text-slate-200">Privacy:</strong> Your API keys are stored locally via{' '}
-        <code className="rounded bg-white px-1 py-0.5 font-mono text-[10px] dark:bg-slate-700 dark:text-slate-300">
-          chrome.storage.local
-        </code>{' '}
-        and are only sent to the provider you select. They never leave your browser for anything else.
+      {/* ── Save ── */}
+      <button
+        className="qi-cta"
+        style={isSaveEnabled ? {} : {
+          background: 'rgba(91,94,244,0.06)',
+          boxShadow: 'none',
+          color: 'var(--qi-muted)',
+          opacity: 0.6,
+          cursor: 'not-allowed',
+        }}
+        onClick={isSaveEnabled ? handleSave : undefined}
+        disabled={saving || !isSaveEnabled}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }} aria-hidden="true">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+        </svg>
+        {saving ? 'Saving…' : 'Save settings'}
+      </button>
+
+      {/* ── Privacy ── */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 10.5, color: 'var(--qi-muted)', lineHeight: 1.5, padding: '10px 0 0' }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13, color: 'var(--qi-green)', flexShrink: 0, marginTop: 1 }} aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span>Your keys and summaries live only in this browser. We don't collect telemetry or read page contents on our servers.</span>
+      </div>
+
+      {/* ── Footer ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, paddingTop: 12, borderTop: '1px solid var(--qi-border)', fontFamily: 'var(--qi-mono)', fontSize: 10, color: 'var(--qi-muted2)' }}>
+        <span>v2.0.0</span>
       </div>
     </div>
   );

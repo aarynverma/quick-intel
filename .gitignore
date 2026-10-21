@@ -2,12 +2,27 @@ node_modules
 dist
 dist.zip
 quick-intel.zip
+*.zip
 .DS_Store
 *.log
 .env
 .env.local
 .vite
+
+# Generated icons (built by scripts/generate-icons.mjs)
 public/icons/icon16.png
 public/icons/icon32.png
 public/icons/icon48.png
 public/icons/icon128.png
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
+tsconfig.node.tsbuildinfo
+
+# Playwright
+test-results/
+tests/e2e/report/
+playwright-report/
+
+# Design files
+Quick Intel.html

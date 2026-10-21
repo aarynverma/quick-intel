@@ -3,33 +3,78 @@ interface Props {
   onDismiss: () => void;
 }
 
-const FRIENDLY: Record<string, { title: string; hint?: string }> = {
-  NO_API_KEY: { title: 'API key needed', hint: 'Open Settings to add your key.' },
-  RESTRICTED_PAGE: { title: "Can't summarize this page", hint: 'Browser pages and the Web Store are blocked.' },
-  EMPTY_CONTENT: { title: 'Not enough content', hint: 'The page may still be loading — try again.' },
-  API_ERROR: { title: 'Provider error' },
-  INVALID_RESPONSE: { title: 'Unexpected response', hint: 'The model returned something malformed.' },
-  NO_ACTIVE_TAB: { title: 'No active tab' },
-  INJECTION_FAILED: { title: 'Could not read page' },
-  UNKNOWN: { title: 'Something went wrong' },
-};
+const PROVIDER_LABELS: Record<string, string> = { openai: 'GPT-4o (OpenAI)', anthropic: 'Claude (Anthropic)', gemini: 'Gemini' };
+function providerLabel(raw: string): string {
+  const m = raw.match(/configured for (\w+)/i);
+  return m ? (PROVIDER_LABELS[m[1].toLowerCase()] ?? m[1]) : 'the selected provider';
+}
+
+function toFriendly(code: string, raw: string): { title: string; body: string } {
+  if (code === 'NO_API_KEY') {
+    const label = providerLabel(raw);
+    return {
+      title: `No API key for ${label}`,
+      body: `Add a ${label} API key in Settings, or switch to a provider you've already configured.`,
+    };
+  }
+
+  // Fully mapped codes . never show raw message
+  const known: Record<string, { title: string; body: string }> = {
+    RESTRICTED_PAGE:  { title: "Can't read this page",      body: 'Browser-internal pages and extensions cannot be summarized.' },
+    EMPTY_CONTENT:    { title: 'Not enough content',        body: 'The page may still be loading. Try again in a moment.' },
+    NO_ACTIVE_TAB:    { title: 'No active tab',             body: 'Click on a browser tab first, then summarize.' },
+    INJECTION_FAILED: { title: 'Could not read page',       body: 'The page may be blocking scripts. Try refreshing.' },
+    INVALID_RESPONSE: { title: 'Unexpected response',       body: 'The model returned something unexpected. Please try again.' },
+  };
+  if (code in known) return known[code];
+
+  // API_ERROR / UNKNOWN . detect pattern without exposing raw JSON
+  const s = raw.toLowerCase();
+  if (raw.includes('429') || s.includes('quota') || s.includes('rate limit') || s.includes('resource_exhausted') || s.includes('rate_limit')) {
+    return { title: 'Rate limit reached', body: "You've hit your API quota. Check your plan's limits and billing, then try again." };
+  }
+  if (raw.includes('401') || s.includes('invalid api key') || s.includes('invalid_api_key') || s.includes('unauthorized')) {
+    return { title: 'Invalid API key', body: 'Your API key was rejected. Verify it in Settings.' };
+  }
+  if (raw.includes('403')) {
+    return { title: 'Access denied', body: "Your API key doesn't have permission for this operation." };
+  }
+  if (raw.includes('500') || raw.includes('502') || raw.includes('503') || s.includes('internal server')) {
+    return { title: 'Provider unavailable', body: 'The AI provider is experiencing issues. Try again in a moment.' };
+  }
+  if (s.includes('network') || s.includes('failed to fetch')) {
+    return { title: 'Network error', body: 'Check your internet connection and try again.' };
+  }
+  return { title: 'Something went wrong', body: 'An unexpected error occurred. Try again or switch providers in Settings.' };
+}
 
 export default function ErrorBanner({ error, onDismiss }: Props) {
-  const f = FRIENDLY[error.code] ?? FRIENDLY.UNKNOWN;
+  const { title, body } = toFriendly(error.code, error.message);
+
   return (
-    <div className="relative rounded-lg border border-rose-200 bg-rose-50 p-3 pr-8 text-sm dark:border-rose-800 dark:bg-rose-950">
-      <div className="font-semibold text-rose-900 dark:text-rose-200">{f.title}</div>
-      <div className="mt-0.5 text-xs text-rose-700 dark:text-rose-300">{error.message}</div>
-      {f.hint && <div className="mt-1 text-[11px] text-rose-600 dark:text-rose-400">{f.hint}</div>}
+    <div style={{
+      position: 'relative',
+      marginTop: 12,
+      borderRadius: 10,
+      border: '1px solid rgba(239,68,68,.35)',
+      background: 'linear-gradient(180deg, rgba(127,29,29,.22), rgba(69,10,10,.22))',
+      padding: '10px 36px 10px 12px',
+    }}>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: '#fca5a5' }}>{title}</div>
+      <div style={{ marginTop: 3, fontSize: 11.5, color: '#fda4a4', lineHeight: 1.45 }}>{body}</div>
       <button
         onClick={onDismiss}
-        className="absolute right-2 top-2 rounded p-1 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900"
         aria-label="Dismiss"
-      >
-        <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-        </svg>
-      </button>
+        style={{
+          position: 'absolute', top: 8, right: 8,
+          width: 22, height: 22, borderRadius: 6,
+          background: 'transparent', border: '1px solid transparent',
+          color: '#f87171', display: 'grid', placeItems: 'center',
+          cursor: 'pointer', fontSize: 15, lineHeight: 1,
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,.15)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,.3)'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
+      >×</button>
     </div>
   );
 }

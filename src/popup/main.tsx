@@ -8,6 +8,7 @@ const mq = window.matchMedia('(prefers-color-scheme: dark)');
 function applyTheme(theme: string): void {
   const dark = theme === 'dark' || (theme === 'system' && mq.matches);
   document.documentElement.classList.toggle('dark', dark);
+  document.documentElement.classList.toggle('light', !dark);
 }
 
 async function bootstrap() {

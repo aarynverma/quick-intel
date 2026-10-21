@@ -3,6 +3,7 @@
 
 import { extractPageContent } from '../content/extractor';
 import { summarize } from '../utils/llm';
+import { enhancePrompt, generateQuestions } from '../utils/prompt-enhancer';
 import {
   addHistoryItem,
   clearHistory,
@@ -17,8 +18,19 @@ import { isRestrictedUrl } from '../utils/url-guard';
 import { logger } from '../utils/logger';
 import type { Provider, RuntimeMessage, RuntimeResponse, SummaryRecord } from '../types';
 
+const SETTINGS_KEY = 'settings';
+
 chrome.runtime.onInstalled.addListener((details) => {
   logger.debug('Installed/updated:', details.reason);
+});
+
+// Hotkey → forward TRIGGER_ENHANCE to the active tab's content script.
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command === 'enhance-prompt' && tab?.id) {
+    chrome.tabs.sendMessage(tab.id, { type: 'TRIGGER_ENHANCE' }).catch(() => {
+      // Content script not loaded on restricted pages — silently ignore.
+    });
+  }
 });
 
 chrome.runtime.onMessage.addListener(
@@ -39,6 +51,52 @@ async function handleMessage(message: RuntimeMessage): Promise<unknown> {
   switch (message.type) {
     case 'SUMMARIZE_ACTIVE_TAB':
       return summarizeActiveTab(message.style, message.customInstructions, message.providerOverride);
+
+    case 'ENHANCE_PROMPT': {
+      const settings = await getSettings();
+      const enhanced = await enhancePrompt(message.text, settings, message.providerOverride, message.answers);
+      return { enhanced };
+    }
+
+    case 'GENERATE_QUESTIONS': {
+      const settings = await getSettings();
+      const questions = await generateQuestions(message.text, settings, message.providerOverride);
+      return { questions };
+    }
+
+    case 'DISABLE_SITE': {
+      // Targeted write — only modifies enhancer.disabledDomains, never touches API keys.
+      const result = await chrome.storage.local.get(SETTINGS_KEY);
+      const raw = (result[SETTINGS_KEY] ?? {}) as Record<string, unknown>;
+      const enhancer = (raw.enhancer as { enabled: boolean; disabledDomains: string[] } | undefined) ?? {
+        enabled: true,
+        disabledDomains: [],
+      };
+      if (!enhancer.disabledDomains.includes(message.domain)) {
+        enhancer.disabledDomains = [...enhancer.disabledDomains, message.domain];
+        raw.enhancer = enhancer;
+        await chrome.storage.local.set({ [SETTINGS_KEY]: raw });
+      }
+      return { done: true };
+    }
+
+    case 'OPEN_POPUP': {
+      const tabParam = message.tab ?? 'settings';
+      const popupUrl = chrome.runtime.getURL('src/popup/index.html') + `?tab=${tabParam}`;
+      try {
+        await chrome.action.openPopup();
+      } catch {
+        await chrome.tabs.create({ url: popupUrl });
+      }
+      return { done: true };
+    }
+
+    case 'PAUSE_ENHANCER': {
+      const pausedUntil = message.hours > 0 ? Date.now() + message.hours * 3_600_000 : 0;
+      await chrome.storage.local.set({ enhancer_paused_until: pausedUntil });
+      return { pausedUntil };
+    }
+
     case 'GET_HISTORY':
       return getHistory();
     case 'CLEAR_HISTORY':
@@ -52,6 +110,7 @@ async function handleMessage(message: RuntimeMessage): Promise<unknown> {
     case 'SAVE_SETTINGS':
       await saveSettings(message.settings);
       return { saved: true };
+
     default: {
       const _exhaustive: never = message;
       throw new AppError('UNKNOWN', `Unknown message: ${JSON.stringify(_exhaustive)}`);

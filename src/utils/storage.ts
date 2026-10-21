@@ -14,6 +14,7 @@ const DEFAULT_SETTINGS: Settings = {
   model: import.meta.env.VITE_DEFAULT_MODEL ?? 'gpt-4o-mini',
   provider: (import.meta.env.VITE_DEFAULT_PROVIDER as Settings['provider']) ?? 'openai',
   theme: 'system',
+  enhancer: { enabled: true, disabledDomains: [] },
 };
 
 export async function getHistory(): Promise<SummaryRecord[]> {
@@ -45,11 +46,17 @@ export async function getSettings(): Promise<Settings> {
   const result = await chrome.storage.local.get(SETTINGS_KEY);
   const raw = (result[SETTINGS_KEY] ?? {}) as Record<string, unknown>;
 
-  // One-time migration: old single apiKey → per-provider apiKeys map.
+  // v1 → v2 migration: single apiKey → per-provider apiKeys map.
   if ('apiKey' in raw && typeof raw.apiKey === 'string' && !('apiKeys' in raw)) {
     const provider = (raw.provider as Provider) ?? DEFAULT_SETTINGS.provider;
     raw.apiKeys = { openai: '', anthropic: '', gemini: '', [provider]: raw.apiKey };
     delete raw.apiKey;
+    await chrome.storage.local.set({ [SETTINGS_KEY]: raw });
+  }
+
+  // v2.0 migration: add enhancer field if missing.
+  if (!('enhancer' in raw)) {
+    raw.enhancer = { enabled: true, disabledDomains: [] };
     await chrome.storage.local.set({ [SETTINGS_KEY]: raw });
   }
 
@@ -60,24 +67,35 @@ export async function getSettings(): Promise<Settings> {
       ...DEFAULT_SETTINGS.apiKeys,
       ...((raw.apiKeys as Partial<Record<Provider, string>>) ?? {}),
     },
+    enhancer: {
+      enabled: (raw.enhancer as { enabled?: boolean })?.enabled ?? true,
+      disabledDomains: (raw.enhancer as { disabledDomains?: string[] })?.disabledDomains ?? [],
+    },
   };
 }
 
 // Redacted projection safe to send to the popup — no raw key values.
 export async function getPublicSettings(): Promise<PublicSettings> {
-  const s = await getSettings();
+  const [s, pauseResult] = await Promise.all([
+    getSettings(),
+    chrome.storage.local.get('enhancer_paused_until'),
+  ]);
   const hasApiKey = Object.fromEntries(
     PROVIDERS.map((p) => [p, Boolean(s.apiKeys[p])]),
   ) as Record<Provider, boolean>;
   const apiKeyPreviews = Object.fromEntries(
     PROVIDERS.map((p) => [p, s.apiKeys[p] ? s.apiKeys[p].slice(-4) : '']),
   ) as Record<Provider, string>;
+  const rawPause = (pauseResult.enhancer_paused_until as number | undefined) ?? 0;
+  const enhancerPausedUntil = rawPause > Date.now() ? rawPause : undefined;
   return {
     hasApiKey,
     apiKeyPreviews,
     model: s.model,
     provider: s.provider,
     theme: s.theme ?? 'system',
+    enhancer: s.enhancer,
+    ...(enhancerPausedUntil ? { enhancerPausedUntil } : {}),
   };
 }
 
@@ -93,6 +111,10 @@ export async function saveSettings(settings: Settings): Promise<void> {
     model: settings.model.trim(),
     provider: settings.provider,
     theme: settings.theme,
+    enhancer: {
+      enabled: settings.enhancer.enabled,
+      disabledDomains: settings.enhancer.disabledDomains,
+    },
   };
   await chrome.storage.local.set({ [SETTINGS_KEY]: clean });
 }

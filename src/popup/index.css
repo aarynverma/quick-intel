@@ -1,69 +1,491 @@
 @import "tailwindcss";
-
-/* Class-based dark mode: any element that is .dark or descends from .dark gets dark: variants. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Tailwind v4 theme tokens — configured inline, no tailwind.config.js needed. */
-@theme {
-  --color-brand-50: #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-500: #6366f1;
-  --color-brand-600: #4f46e5;
-  --color-brand-700: #4338ca;
-
-  --color-dark-bg: #0f172a;
-  --color-dark-surface: #1e293b;
-  --color-dark-border: #334155;
-  --color-dark-text: #f1f5f9;
-  --color-dark-muted: #94a3b8;
-
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+/* ── Design tokens (dark-first — overridden by html.light) ── */
+:root {
+  --qi-bg:        #060b18;
+  --qi-s1:        #0d1628;
+  --qi-s2:        #152035;
+  --qi-s3:        #1a2742;
+  --qi-border:    #1e3050;
+  --qi-border-hi: #2a4570;
+  --qi-brand:     #5b5ef4;
+  --qi-violet:    #8b5cf6;
+  --qi-green:     #10b981;
+  --qi-text:      #f0f4ff;
+  --qi-muted:     #6b85a8;
+  --qi-muted2:    #4a5f80;
+  --qi-grad:      linear-gradient(135deg, #5b5ef4, #8b5cf6);
+  --qi-grad-soft: linear-gradient(135deg, rgba(91,94,244,.18), rgba(139,92,246,.18));
+  --qi-mono:      'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
 }
 
-html, body {
-  width: 400px;
-  height: 600px;
+html.light {
+  --qi-bg:        #f7f9fc;
+  --qi-s1:        #ffffff;
+  --qi-s2:        #f1f5f9;
+  --qi-s3:        #e2e8f0;
+  --qi-border:    #e2e8f0;
+  --qi-border-hi: #cbd5e1;
+  --qi-text:      #0c1424;
+  --qi-muted:     #64748b;
+  --qi-muted2:    #94a3b8;
 }
 
-/* #root must propagate the fixed height so h-full works in App and flex children constrain correctly. */
-#root {
-  height: 100%;
-}
+html, body { width: 400px; height: 600px; margin: 0; padding: 0; border-radius: 14px; overflow: hidden; }
+#root { height: 100%; border-radius: 14px; overflow: hidden; }
 
 body {
-  font-family: var(--font-sans);
-  color: #0f172a;
-  background: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  background: var(--qi-bg);
+  color: var(--qi-text);
+  -webkit-font-smoothing: antialiased;
 }
 
-.dark body {
-  color: #f1f5f9;
-  background: #0f172a;
-}
-
-/* Subtle native-feeling scrollbar. */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+::-webkit-scrollbar-thumb { background: var(--qi-s3); border-radius: 3px; }
 
-.dark ::-webkit-scrollbar-thumb { background: #334155; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-/* Skeleton shimmer. */
-@keyframes shimmer {
-  0% { background-position: -200px 0; }
-  100% { background-position: calc(200px + 100%) 0; }
+/* ── Active tab gradient underline ── */
+.qi-tab-active::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--qi-grad);
+  box-shadow: 0 0 10px rgba(91,94,244,.6);
 }
 
-.shimmer {
-  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
-  background-size: 200px 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
+/* ── Provider / Theme 3-col grid buttons ── */
+.qi-prov {
+  appearance: none;
+  border: 1px solid var(--qi-border);
+  background: linear-gradient(180deg, rgba(21,32,53,.6), rgba(13,22,40,.6));
+  color: var(--qi-muted);
+  font: 600 12px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  letter-spacing: -0.005em;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all .15s ease;
+  position: relative;
+  overflow: hidden;
+}
+.qi-prov:hover { color: var(--qi-text); border-color: var(--qi-border-hi); }
+.qi-prov.active {
+  color: #fff;
+  background: var(--qi-grad);
+  border-color: rgba(91,94,244,.55);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 4px 16px -4px rgba(91,94,244,.5);
+}
+.qi-prov .qi-check {
+  position: absolute;
+  top: 5px; right: 6px;
+  width: 12px; height: 12px;
+  color: rgba(255,255,255,.85);
+  display: none;
+}
+.qi-prov.active .qi-check { display: block; }
+
+/* ── Segmented (provider selector in summarize tab) ── */
+.qi-seg {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(13,22,40,.7);
+  border: 1px solid var(--qi-border);
+  height: 28px;
+  box-sizing: border-box;
+}
+.qi-seg button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--qi-muted);
+  font: 600 11px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  padding: 0 10px;
+  height: 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all .15s ease;
+}
+.qi-seg button:hover { color: var(--qi-text); }
+.qi-seg button.active {
+  color: #fff;
+  background: var(--qi-grad);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 3px 10px -2px rgba(91,94,244,.5);
 }
 
-.dark .shimmer {
-  background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%);
-  background-size: 200px 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
+/* ── CTA button ── */
+.qi-cta {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  background: var(--qi-grad);
+  color: #fff;
+  font: 600 13px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.25),
+    inset 0 -1px 0 rgba(0,0,0,.2),
+    0 6px 18px -4px rgba(91,94,244,.55),
+    0 0 0 1px rgba(91,94,244,.4);
+  transition: transform .1s ease, box-shadow .15s ease;
+  margin-top: 14px;
+}
+.qi-cta:hover:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.3),
+    inset 0 -1px 0 rgba(0,0,0,.2),
+    0 10px 28px -4px rgba(91,94,244,.75),
+    0 0 0 1px rgba(91,94,244,.5);
+}
+.qi-cta:active:not(:disabled) { transform: translateY(1px); }
+.qi-cta:disabled { opacity: .5; cursor: not-allowed; }
+
+@keyframes qi-pulse {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.25), inset 0 -1px 0 rgba(0,0,0,.2), 0 6px 18px -4px rgba(91,94,244,.55), 0 0 0 1px rgba(91,94,244,.4); }
+  50%       { box-shadow: inset 0 1px 0 rgba(255,255,255,.25), inset 0 -1px 0 rgba(0,0,0,.2), 0 8px 28px -4px rgba(91,94,244,.85), 0 0 24px -4px rgba(139,92,246,.5), 0 0 0 1px rgba(91,94,244,.6); }
+}
+.qi-cta-pulse { animation: qi-pulse 2.4s ease-in-out infinite; }
+
+/* ── Section header (settings) ── */
+.qi-sec-h {
+  font-family: var(--qi-mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--qi-muted);
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.qi-sec-h::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--qi-border), transparent);
+}
+
+/* ── Result card ── */
+.qi-result {
+  margin-top: 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(21,32,53,.75), rgba(13,22,40,.75));
+  border: 1px solid var(--qi-border);
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 12px 30px -10px rgba(0,0,0,.5);
+}
+.qi-result::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(91,94,244,.35), rgba(139,92,246,.15) 50%, transparent 80%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ── Pill badge ── */
+.qi-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--qi-grad-soft);
+  border: 1px solid rgba(91,94,244,.35);
+  color: #c9caff;
+  font: 600 10.5px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  letter-spacing: -0.005em;
+}
+
+/* ── Ghost button ── */
+.qi-ghost {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--qi-muted);
+  font: 600 11px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.qi-ghost:hover {
+  color: var(--qi-text);
+  background: rgba(255,255,255,.04);
+  border-color: var(--qi-border);
+}
+.qi-ghost svg { width: 12px; height: 12px; }
+
+/* ── History day group ── */
+.qi-hist-day {
+  font-family: var(--qi-mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--qi-muted2);
+  margin: 14px 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.qi-hist-day::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--qi-border), transparent);
+}
+
+/* ── Toggle On/Off seg ── */
+.qi-toggle-seg {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: rgba(13,22,40,.7);
+  border: 1px solid var(--qi-border);
+  height: 28px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.qi-toggle-seg button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--qi-muted);
+  font: 600 11px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  padding: 0 10px;
+  height: 22px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.qi-toggle-seg button.active {
+  color: #fff;
+  background: var(--qi-grad);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2);
+}
+
+/* ── API key field ── */
+.qi-keyfield {
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(21,32,53,.85), rgba(13,22,40,.85));
+  border: 1px solid var(--qi-border);
+  display: flex;
+  align-items: center;
+  padding: 0 6px 0 12px;
+  gap: 8px;
+  transition: all .15s ease;
+}
+.qi-keyfield.editing {
+  border-color: rgba(91,94,244,.6);
+  box-shadow: 0 0 0 3px rgba(91,94,244,.12), 0 0 18px -4px rgba(91,94,244,.4);
+}
+.qi-keyfield input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--qi-text);
+  font: 500 12.5px/1 var(--qi-mono);
+  letter-spacing: .02em;
+  min-width: 0;
+}
+.qi-keyfield input.masked {
+  color: var(--qi-muted);
+  letter-spacing: .18em;
+  font-size: 14px;
+}
+.qi-keyfield-btn {
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--qi-border);
+  background: rgba(255,255,255,.02);
+  color: var(--qi-muted);
+  font: 600 10.5px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  padding: 0 9px;
+  cursor: pointer;
+  transition: all .15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.qi-keyfield-btn:hover { color: var(--qi-text); border-color: var(--qi-border-hi); }
+
+/* ── Tag pills (disabled sites) ── */
+.qi-sites-box {
+  margin-top: 8px;
+  border-radius: 10px;
+  background: rgba(4,7,15,.7);
+  border: 1px solid var(--qi-border);
+  padding: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 40px;
+  box-sizing: border-box;
+  align-items: flex-start;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.4);
+}
+.qi-tag-pill {
+  height: 22px;
+  padding: 0 4px 0 9px;
+  border-radius: 999px;
+  background: rgba(21,32,53,.9);
+  border: 1px solid var(--qi-border);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 10.5px/1 var(--qi-mono);
+  color: #c0d0e8;
+}
+.qi-tag-x {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  color: var(--qi-muted);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.qi-tag-x:hover { background: rgba(239,68,68,.15); color: #ff8b8b; }
+
+/* ── Skeleton shimmer ── */
+@keyframes qi-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+.qi-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.1), rgba(255,255,255,.04));
+  background-size: 200% 100%;
+  animation: qi-shimmer 1.8s linear infinite;
+  border-radius: 6px;
+}
+
+/* ── Custom dropdown (shared by StyleDropdown + ModelDropdown) ── */
+.qi-dd-wrap { position: relative; }
+.qi-dd-trigger {
+  width: 100%; height: 40px; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(21,32,53,.85), rgba(13,22,40,.85));
+  border: 1px solid var(--qi-border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+  color: var(--qi-text);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px; gap: 8px;
+  font: 500 12.5px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  cursor: pointer; box-sizing: border-box; outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.qi-dd-trigger:hover { border-color: var(--qi-border-hi); }
+.qi-dd-trigger.open {
+  border-color: rgba(91,94,244,.6);
+  box-shadow: 0 0 0 3px rgba(91,94,244,.12);
+}
+.qi-dd-trigger .qi-dd-chev {
+  flex-shrink: 0; transition: transform .15s ease;
+  color: var(--qi-muted); width: 12px; height: 12px;
+}
+.qi-dd-trigger.open .qi-dd-chev { transform: rotate(180deg); }
+.qi-dd-meta { font-family: var(--qi-mono); font-size: 10.5px; color: var(--qi-muted); }
+
+.qi-dd-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+  background: linear-gradient(180deg, rgba(21,32,53,.98), rgba(13,22,40,.98));
+  border: 1px solid var(--qi-border); border-radius: 10px; overflow: hidden;
+  box-shadow: 0 10px 30px -8px rgba(0,0,0,.6), 0 0 0 1px rgba(91,94,244,.1);
+}
+.qi-dd-item {
+  width: 100%; text-align: left;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px; background: transparent; border: none;
+  color: var(--qi-text);
+  font: 500 12.5px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  cursor: pointer; transition: background .1s ease; gap: 8px;
+}
+.qi-dd-item:hover { background: rgba(255,255,255,.04); }
+.qi-dd-item.selected { color: #c9caff; font-weight: 600; background: rgba(91,94,244,.15); }
+
+/* ── Light mode overrides ── */
+html.light body { color: var(--qi-text); }
+html.light .qi-result {
+  background: #fff;
+  border-color: #e2e8f0;
+}
+html.light .qi-result::before { opacity: 0; }
+html.light .qi-prov {
+  background: #fff;
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+html.light .qi-prov:hover { border-color: #cbd5e1; color: #0c1424; }
+html.light .qi-seg { background: #fff; border-color: #e2e8f0; }
+html.light .qi-seg button { color: #64748b; }
+html.light .qi-seg button:hover { color: #0c1424; }
+html.light .qi-keyfield { background: #fff; border-color: #e2e8f0; }
+html.light .qi-keyfield input { color: #0c1424; }
+html.light .qi-keyfield input.masked { color: #64748b; }
+html.light .qi-keyfield-btn { border-color: #e2e8f0; color: #64748b; background: #f1f5f9; }
+html.light .qi-keyfield-btn:hover { color: #0c1424; border-color: #cbd5e1; }
+html.light .qi-sites-box { background: #f1f5f9; border-color: #e2e8f0; }
+html.light .qi-tag-pill { background: #fff; border-color: #e2e8f0; color: #334155; }
+html.light .qi-toggle-seg { background: #f1f5f9; border-color: #e2e8f0; }
+html.light .qi-toggle-seg button { color: #64748b; }
+html.light .qi-ghost { color: #64748b; }
+html.light .qi-ghost:hover { color: #0c1424; background: rgba(15,23,42,.05); border-color: #e2e8f0; }
+html.light .qi-sec-h { color: #64748b; }
+html.light .qi-sec-h::after { background: linear-gradient(90deg, #e2e8f0, transparent); }
+html.light .qi-hist-day { color: #94a3b8; }
+html.light .qi-hist-day::after { background: linear-gradient(90deg, #e2e8f0, transparent); }
+html.light .qi-pill { background: rgba(91,94,244,.08); border-color: rgba(91,94,244,.25); color: #5b5ef4; }
+html.light .qi-shimmer {
+  background: linear-gradient(90deg, #f1f5f9, #e2e8f0, #f1f5f9);
+  background-size: 200% 100%;
+}
+/* Custom dropdown light mode */
+html.light .qi-dd-trigger {
+  background: #fff; border-color: #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06); color: #0c1424;
+}
+html.light .qi-dd-trigger:hover { border-color: #cbd5e1; }
+html.light .qi-dd-trigger.open { border-color: rgba(91,94,244,.5); box-shadow: 0 0 0 3px rgba(91,94,244,.1); }
+html.light .qi-dd-meta { color: #94a3b8; }
+html.light .qi-dd-list { background: #fff; border-color: #e2e8f0; box-shadow: 0 10px 24px -8px rgba(0,0,0,.12); }
+html.light .qi-dd-item { color: #0c1424; }
+html.light .qi-dd-item:hover { background: #f8fafc; }
+html.light .qi-dd-item.selected { color: #5b5ef4; background: rgba(91,94,244,.08); }
+/* Error banner in light mode */
+html.light .qi-error-banner {
+  background: rgba(254,226,226,.7);
+  border-color: rgba(239,68,68,.3);
+}
+/* History badge in light mode */
+html.light .qi-style-badge {
+  background: rgba(91,94,244,.1);
+  border-color: rgba(91,94,244,.3);
+  color: #5b5ef4;
 }
